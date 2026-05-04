@@ -1,0 +1,18 @@
+package com.unitx.shade_core.compose
+
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContract
+import com.unitx.shade_core.core.ShadeCore
+
+/** No-op [ShadeRegistrar] stub — only used so [ShadeCore]'s constructor is satisfied. */
+object NoOpRegistrar : com.unitx.shade_core.core.ShadeRegistrar {
+    override val context: android.content.Context
+        get() = error("NoOpRegistrar.context should never be called")
+
+    override fun <I, O> register(
+        contract: ActivityResultContract<I, O>,
+        callback: (O) -> Unit
+    ): ActivityResultLauncher<I> = error("NoOpRegistrar.register should never be called")
+
+    override fun shouldShowRationale(permission: String) = false
+}

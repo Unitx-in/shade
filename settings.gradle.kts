@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 rootProject.name = "Shade"
 include(":app")
 include(":shade-core")
+include(":sample-compose")
