@@ -1,6 +1,5 @@
-package com.unitx.shade_core.core
+package com.unitx.shade_core.registrar
 
-import android.app.Activity
 import android.content.Context
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
@@ -9,7 +8,7 @@ import androidx.activity.result.contract.ActivityResultContract
  * Abstraction over the launcher-registration surface that exists on both
  * [androidx.fragment.app.Fragment] and [androidx.activity.ComponentActivity].
  *
- * [ShadeCore] depends only on this interface, keeping it free of any
+ * [com.unitx.shade_core.core.ShadeCore] depends only on this interface, keeping it free of any
  * concrete Fragment or Activity import — which lets the Compose module
  * supply its own implementation backed by [rememberLauncherForActivityResult].
  */

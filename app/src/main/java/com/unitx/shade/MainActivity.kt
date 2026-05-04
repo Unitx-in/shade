@@ -1,17 +1,23 @@
 package com.unitx.shade
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.unitx.shade.ui.theme.ShadeTheme
+import com.unitx.shade_core.action.ShadeAction
+import com.unitx.shade_core.compose.rememberShade
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,10 +26,29 @@ class MainActivity : ComponentActivity() {
         setContent {
             ShadeTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+
+                        Text("hello live apk")
+
+                        val context = LocalContext.current
+                        val shade = rememberShade {
+                            image {
+                                camera{
+                                    onResult { captured->
+                                        Toast.makeText(context, "Image captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+
+                        LaunchedEffect(Unit) {
+                            shade.launch(ShadeAction.Image.Camera)
+                        }
+                    }
                 }
             }
         }

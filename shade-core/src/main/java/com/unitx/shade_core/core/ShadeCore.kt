@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.unitx.shade_core.action.ShadeAction
 import com.unitx.shade_core.dsl.ShadeConfig
+import com.unitx.shade_core.registrar.ShadeRegistrar
 import com.unitx.shade_core.result.ShadeError
 import com.unitx.shade_core.result.ShadeResult
 import java.io.File
@@ -20,13 +21,30 @@ import java.io.IOException
  * Core engine. Do not instantiate directly — use [Shade.with] (XML/Fragment)
  * or [rememberShade] (Compose).
  *
- * All launchers are registered eagerly via [ShadeRegistrar] so this class
+ * All launchers are registered eagerly via [com.unitx.shade_core.registrar.ShadeRegistrar] so this class
  * has no knowledge of Fragment or Activity, making it host-agnostic.
  */
 open class ShadeCore(
     private val registrar: ShadeRegistrar,
     private val config: ShadeConfig
 ) {
+
+    init {
+        registerLaunchers()
+    }
+
+    protected open fun registerLaunchers() {
+        cameraPermissionLauncher
+        mediaPermissionLauncher
+        imageCameraLauncher
+        imageGallerySingleLauncher
+        imageGalleryMultiLauncher
+        videoCameraLauncher
+        videoGallerySingleLauncher
+        videoGalleryMultiLauncher
+        pdfPickerLauncher
+        documentPickerLauncher
+    }
 
     private val context get() = registrar.context
 
@@ -39,166 +57,193 @@ open class ShadeCore(
     // Permission launchers
     // =========================================================================
 
-    private val cameraPermissionLauncher = registrar.register(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            executeCamera(pendingCameraTarget)
-        } else {
-            val error = if (registrar.shouldShowRationale(Manifest.permission.CAMERA))
-                ShadeError.PermissionDenied
-            else
-                ShadeError.PermissionPermanentlyDenied
-            when (pendingCameraTarget) {
-                CameraTarget.IMAGE -> config.image?.camera?.onFailure?.invoke(error)
-                CameraTarget.VIDEO -> config.video?.camera?.onFailure?.invoke(error)
+    private val cameraPermissionLauncher by lazy {
+        registrar.register(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) {
+                executeCamera(pendingCameraTarget)
+            } else {
+                val error =
+                    if (registrar.shouldShowRationale(Manifest.permission.CAMERA))
+                        ShadeError.PermissionDenied
+                    else
+                        ShadeError.PermissionPermanentlyDenied
+
+                when (pendingCameraTarget) {
+                    CameraTarget.IMAGE -> config.image?.camera?.onFailure?.invoke(error)
+                    CameraTarget.VIDEO -> config.video?.camera?.onFailure?.invoke(error)
+                }
+            }
+            pendingCameraTarget = CameraTarget.IMAGE
+        }
+    }
+
+    private val mediaPermissionLauncher by lazy {
+        registrar.register(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) {
+                launchVideoGallery()
+            } else {
+                val perm = readVideoPermission()
+                val error =
+                    if (registrar.shouldShowRationale(perm))
+                        ShadeError.PermissionDenied
+                    else
+                        ShadeError.PermissionPermanentlyDenied
+
+                config.video?.gallery?.onFailure?.invoke(error)
             }
         }
-        pendingCameraTarget = CameraTarget.IMAGE
     }
-
-    private val mediaPermissionLauncher = registrar.register(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            launchVideoGallery()
-        } else {
-            val perm = readVideoPermission()
-            val error = if (registrar.shouldShowRationale(perm))
-                ShadeError.PermissionDenied
-            else
-                ShadeError.PermissionPermanentlyDenied
-            config.video?.gallery?.onFailure?.invoke(error)
-        }
-    }
-
     // =========================================================================
     // Activity result launchers
     // =========================================================================
 
     // ── Image camera ──────────────────────────────────────────────────────────
 
-    private val imageCameraLauncher = registrar.register(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
-        val file = tempCaptureFile
-        val uri = tempCaptureUri
-        tempCaptureFile = null
-        tempCaptureUri = null
+    private val imageCameraLauncher by lazy {
+        registrar.register(
+            ActivityResultContracts.TakePicture()
+        ) { success ->
+            val file = tempCaptureFile
+            val uri = tempCaptureUri
+            tempCaptureFile = null
+            tempCaptureUri = null
 
-        if (success && file != null && uri != null) {
-            config.image?.camera?.onResult?.invoke(ShadeResult.Captured(file, uri))
-        } else {
-            file?.delete()
-            config.image?.camera?.onFailure?.invoke(ShadeError.CaptureFailed)
+            if (success && file != null && uri != null) {
+                config.image?.camera?.onResult?.invoke(ShadeResult.Captured(file, uri))
+            } else {
+                file?.delete()
+                config.image?.camera?.onFailure?.invoke(ShadeError.CaptureFailed)
+            }
         }
     }
 
     // ── Image gallery — single ────────────────────────────────────────────────
 
-    private val imageGallerySingleLauncher = registrar.register(
-        PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
-            config.image?.gallery?.onResult?.invoke(ShadeResult.Single(uri))
-        } else {
-            config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+    private val imageGallerySingleLauncher by lazy {
+        registrar.register(
+            PickVisualMedia()
+        ) { uri ->
+            if (uri != null) {
+                config.image?.gallery?.onResult?.invoke(ShadeResult.Single(uri))
+            } else {
+                config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+            }
         }
     }
 
     // ── Image gallery — multi ─────────────────────────────────────────────────
 
-    private val imageGalleryMultiLauncher = registrar.register(
-        ActivityResultContracts.PickMultipleVisualMedia(
-            maxItems = config.image?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
-        )
-    ) { uris ->
-        if (uris.isNotEmpty()) {
-            config.image?.gallery?.onResult?.invoke(ShadeResult.Multiple(uris))
-        } else {
-            config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+    private val imageGalleryMultiLauncher by lazy {
+        registrar.register(
+            ActivityResultContracts.PickMultipleVisualMedia(
+                maxItems = config.image?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
+            )
+        ) { uris ->
+            if (uris.isNotEmpty()) {
+                config.image?.gallery?.onResult?.invoke(ShadeResult.Multiple(uris))
+            } else {
+                config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+            }
         }
     }
 
     // ── Video camera ──────────────────────────────────────────────────────────
 
-    private val videoCameraLauncher = registrar.register(
-        ActivityResultContracts.CaptureVideo()
-    ) { success ->
-        val file = tempCaptureFile
-        val uri = tempCaptureUri
-        tempCaptureFile = null
-        tempCaptureUri = null
+    private val videoCameraLauncher by lazy {
+        registrar.register(
+            ActivityResultContracts.CaptureVideo()
+        ) { success ->
+            val file = tempCaptureFile
+            val uri = tempCaptureUri
+            tempCaptureFile = null
+            tempCaptureUri = null
 
-        if (success && file != null && uri != null) {
-            config.video?.camera?.onResult?.invoke(ShadeResult.Captured(file, uri))
-        } else {
-            file?.delete()
-            config.video?.camera?.onFailure?.invoke(ShadeError.CaptureFailed)
+            if (success && file != null && uri != null) {
+                config.video?.camera?.onResult?.invoke(ShadeResult.Captured(file, uri))
+            } else {
+                file?.delete()
+                config.video?.camera?.onFailure?.invoke(ShadeError.CaptureFailed)
+            }
         }
     }
 
     // ── Video gallery — single ────────────────────────────────────────────────
 
-    private val videoGallerySingleLauncher = registrar.register(
-        PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
-            config.video?.gallery?.onResult?.invoke(ShadeResult.Single(uri))
-        } else {
-            config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+    private val videoGallerySingleLauncher by lazy {
+        registrar.register(
+            PickVisualMedia()
+        ) { uri ->
+            if (uri != null) {
+                config.video?.gallery?.onResult?.invoke(ShadeResult.Single(uri))
+            } else {
+                config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+            }
         }
     }
 
     // ── Video gallery — multi ─────────────────────────────────────────────────
 
-    private val videoGalleryMultiLauncher = registrar.register(
-        ActivityResultContracts.PickMultipleVisualMedia(
-            maxItems = config.video?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
-        )
-    ) { uris ->
-        if (uris.isNotEmpty()) {
-            config.video?.gallery?.onResult?.invoke(ShadeResult.Multiple(uris))
-        } else {
-            config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+    private val videoGalleryMultiLauncher by lazy {
+        registrar.register(
+            ActivityResultContracts.PickMultipleVisualMedia(
+                maxItems = config.video?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
+            )
+        ) { uris ->
+            if (uris.isNotEmpty()) {
+                config.video?.gallery?.onResult?.invoke(ShadeResult.Multiple(uris))
+            } else {
+                config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+            }
         }
     }
 
     // ── PDF picker ────────────────────────────────────────────────────────────
 
-    private val pdfPickerLauncher = registrar.register(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri == null) {
-            config.pdf?.onFailure?.invoke(ShadeError.PickCancelled)
-            return@register
-        }
-        val file = copyUriToCache(uri, prefix = "PDF_", extension = ".pdf")
-        if (file != null) {
-            config.pdf?.onResult?.invoke(ShadeResult.Single(uri = uri, file = file))
-        } else {
-            config.pdf?.onFailure?.invoke(ShadeError.FileSaveFailed)
+    private val pdfPickerLauncher by lazy {
+        registrar.register(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            if (uri == null) {
+                config.pdf?.onFailure?.invoke(ShadeError.PickCancelled)
+                return@register
+            }
+
+            val file = copyUriToCache(uri, "PDF_", ".pdf")
+            if (file != null) {
+                config.pdf?.onResult?.invoke(ShadeResult.Single(uri, file))
+            } else {
+                config.pdf?.onFailure?.invoke(ShadeError.FileSaveFailed)
+            }
         }
     }
 
     // ── Document picker ───────────────────────────────────────────────────────
 
-    private val documentPickerLauncher = registrar.register(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        val docConfig = config.document
-        if (uri == null) {
-            docConfig?.onFailure?.invoke(ShadeError.PickCancelled)
-            return@register
-        }
-        val file: File? = if (docConfig?.copyToCache == true) {
-            copyUriToCache(uri, prefix = "DOC_", extension = extensionFromUri(uri))
-        } else null
+    private val documentPickerLauncher by lazy {
+        registrar.register(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            val docConfig = config.document
 
-        if (docConfig?.copyToCache == true && file == null) {
-            docConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
-        } else {
-            docConfig?.onResult?.invoke(ShadeResult.Single(uri = uri, file = file))
+            if (uri == null) {
+                docConfig?.onFailure?.invoke(ShadeError.PickCancelled)
+                return@register
+            }
+
+            val file =
+                if (docConfig?.copyToCache == true)
+                    copyUriToCache(uri, "DOC_", extensionFromUri(uri))
+                else null
+
+            if (docConfig?.copyToCache == true && file == null) {
+                docConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
+            } else {
+                docConfig?.onResult?.invoke(ShadeResult.Single(uri, file))
+            }
         }
     }
 
@@ -220,12 +265,12 @@ open class ShadeCore(
      */
     open fun launch(action: ShadeAction) {
         when (action) {
-            is ShadeAction.Image.Camera  -> handleImageCamera()
+            is ShadeAction.Image.Camera -> handleImageCamera()
             is ShadeAction.Image.Gallery -> handleImageGallery()
-            is ShadeAction.Video.Camera  -> handleVideoCamera()
+            is ShadeAction.Video.Camera -> handleVideoCamera()
             is ShadeAction.Video.Gallery -> handleVideoGallery()
-            is ShadeAction.Pdf           -> handlePdf()
-            is ShadeAction.Document      -> handleDocument(action)
+            is ShadeAction.Pdf -> handlePdf()
+            is ShadeAction.Document -> handleDocument(action)
         }
     }
 
@@ -295,6 +340,7 @@ open class ShadeCore(
     // =========================================================================
 
     private enum class CameraTarget { IMAGE, VIDEO }
+
     private var pendingCameraTarget: CameraTarget = CameraTarget.IMAGE
 
     private fun requireCameraPermission(target: CameraTarget) {
@@ -375,17 +421,17 @@ open class ShadeCore(
     private fun extensionFromUri(uri: Uri): String {
         val mime = context.contentResolver.getType(uri) ?: return ".bin"
         return when {
-            mime.contains("pdf")         -> ".pdf"
-            mime.contains("msword")      -> ".doc"
+            mime.contains("pdf") -> ".pdf"
+            mime.contains("msword") -> ".doc"
             mime.contains("wordprocess") -> ".docx"
-            mime.contains("ms-excel")    -> ".xls"
+            mime.contains("ms-excel") -> ".xls"
             mime.contains("spreadsheet") -> ".xlsx"
-            mime.contains("powerpoint")  -> ".ppt"
-            mime.contains("presentati")  -> ".pptx"
-            mime.contains("text/plain")  -> ".txt"
-            mime.contains("text/csv")    -> ".csv"
-            mime.contains("rtf")         -> ".rtf"
-            else                         -> ".bin"
+            mime.contains("powerpoint") -> ".ppt"
+            mime.contains("presentati") -> ".pptx"
+            mime.contains("text/plain") -> ".txt"
+            mime.contains("text/csv") -> ".csv"
+            mime.contains("rtf") -> ".rtf"
+            else -> ".bin"
         }
     }
 

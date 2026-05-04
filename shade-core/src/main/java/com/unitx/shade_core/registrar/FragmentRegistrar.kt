@@ -1,4 +1,4 @@
-package com.unitx.shade_core.core
+package com.unitx.shade_core.registrar
 
 import android.content.Context
 import androidx.activity.result.ActivityResultLauncher
@@ -8,7 +8,7 @@ import androidx.fragment.app.Fragment
 /**
  * [ShadeRegistrar] implementation for XML / Fragment-based screens.
  *
- * Wrap your [Fragment] with this and pass it to [ShadeCore] (or use
+ * Wrap your [Fragment] with this and pass it to [com.unitx.shade_core.core.ShadeCore] (or use
  * [Shade.with] which does this for you).
  */
 class FragmentRegistrar(private val fragment: Fragment) : ShadeRegistrar {

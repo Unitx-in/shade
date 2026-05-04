@@ -3,6 +3,7 @@ package com.unitx.shade_core.compose
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,10 +15,13 @@ import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.unitx.shade_core.action.ShadeAction
+import com.unitx.shade_core.core.DocumentMimeType
 import com.unitx.shade_core.core.ShadeCore
 import com.unitx.shade_core.dsl.ShadeConfig
+import com.unitx.shade_core.registrar.ShadeRegistrar
 import com.unitx.shade_core.result.ShadeError
 import com.unitx.shade_core.result.ShadeResult
 import java.io.File
@@ -120,14 +124,10 @@ import java.io.File
 fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
 
     val context = LocalContext.current
-    val config = remember(block) {
-        ShadeConfig().apply(block)
-    }
+    val config = remember { ShadeConfig().apply(block) }
 
     // ── Permission launchers ──────────────────────────────────────────────────
 
-    // Mutable holder used to forward permission results after the
-    // ShadeCore is constructed (breaks the chicken-and-egg problem).
     val permissionCallbacks = remember { PermissionCallbackHolder() }
 
     val cameraPermLauncher = rememberLauncherForActivityResult(
@@ -257,26 +257,12 @@ private fun buildShadeCore(
     documentLauncher: ActivityResultLauncher<Array<String>>,
 ): ShadeCore {
 
-    // Temp capture state lives here, outside ShadeCore, because Compose
-    // launchers are invoked via closures rather than registered contracts.
     var tempCaptureFile: File? = null
     var tempCaptureUri: Uri? = null
 
-    val defaultDocMimes = arrayOf(
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-powerpoint",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "text/plain",
-        "text/csv",
-        "application/rtf"
-    )
-
     fun createTempFile(prefix: String, ext: String): Pair<File, Uri>? = try {
         val file = File.createTempFile(prefix, ext, context.cacheDir)
-        val uri = androidx.core.content.FileProvider.getUriForFile(
+        val uri = FileProvider.getUriForFile(
             context, "${context.packageName}.fileprovider", file
         )
         Pair(file, uri)
@@ -312,11 +298,11 @@ private fun buildShadeCore(
     }
 
     fun hasPermission(perm: String) =
-        androidx.core.content.ContextCompat.checkSelfPermission(context, perm) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(context, perm) ==
+                PackageManager.PERMISSION_GRANTED
 
     fun rationaleChecker(perm: String) =
-        (context as? Activity)?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, perm) } ?: false
+        (context as? Activity)?.shouldShowRequestPermissionRationale(perm) ?: false
 
     // ── Wire image camera ─────────────────────────────────────────────────────
 
@@ -451,6 +437,55 @@ private fun buildShadeCore(
         }
     }
 
+    // ── Build the registrar-backed ShadeCore ──────────────────────────────────
+
+    val registrar = object : ShadeRegistrar {
+        override val context = context
+
+        @Suppress("UNCHECKED_CAST")
+        override fun <I, O> register(
+            contract: ActivityResultContract<I, O>,
+            callback: (O) -> Unit
+        ): ActivityResultLauncher<I> {
+            // All launchers are already registered via rememberLauncherForActivityResult above.
+            // This registrar is only used so ShadeCore can call launch() on named launchers.
+            // We map each contract type to its pre-built launcher here.
+            return when (contract) {
+                is ActivityResultContracts.RequestPermission ->
+                    when {
+                        permissionCallbacks.onCamera == null ->
+                            cameraPermLauncher as ActivityResultLauncher<I>
+
+                        else ->
+                            mediaPermLauncher as ActivityResultLauncher<I>
+                    }
+
+                is ActivityResultContracts.TakePicture ->
+                    imageCameraLauncher as ActivityResultLauncher<I>
+
+                is PickVisualMedia ->
+                    imageGallerySingleLauncher as ActivityResultLauncher<I>
+
+                is ActivityResultContracts.PickMultipleVisualMedia ->
+                    imageGalleryMultiLauncher as ActivityResultLauncher<I>
+
+                is ActivityResultContracts.CaptureVideo ->
+                    videoCameraLauncher as ActivityResultLauncher<I>
+
+                is ActivityResultContracts.OpenDocument ->
+                    pdfLauncher as ActivityResultLauncher<I>
+
+                else -> throw IllegalArgumentException(
+                    "Unrecognised contract in ComposeRegistrar: ${contract::class.simpleName}"
+                )
+            }
+        }
+
+        override fun shouldShowRationale(permission: String) = rationaleChecker(permission)
+    }
+
+    // We bypass ShadeCore's internal launcher wiring by building a lightweight
+    // shell that delegates launch() directly to our pre-wired Compose launchers.
     return ComposeShadeCore(
         config = config,
         hasPermissionFn = ::hasPermission,
@@ -464,12 +499,109 @@ private fun buildShadeCore(
         videoGalleryMultiLauncher = videoGalleryMultiLauncher,
         pdfLauncher = pdfLauncher,
         documentLauncher = documentLauncher,
-        defaultDocMimes = defaultDocMimes,
+        defaultDocMimes = DocumentMimeType.ALL_VALUES,
         pendingCameraTargetRef = { pendingCameraTarget },
         setPendingCameraTarget = { pendingCameraTarget = it },
     )
 }
 
+// =============================================================================
+// ComposeShadeCore — thin ShadeCore subclass that dispatches to Compose launchers
+// =============================================================================
+
+/**
+ * A [ShadeCore] variant that bypasses the registrar-based launcher wiring
+ * and instead calls pre-built Compose [ActivityResultLauncher] instances directly.
+ *
+ * This avoids any unsafe casting in the registrar and keeps the launch
+ * path clean and type-safe.
+ */
+internal class ComposeShadeCore(
+    private val config: ShadeConfig,
+    private val hasPermissionFn: (String) -> Boolean,
+    private val cameraPermLauncher: ActivityResultLauncher<String>,
+    private val mediaPermLauncher: ActivityResultLauncher<String>,
+    private val imageCameraLaunchFn: () -> Unit,
+    private val imageGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
+    private val imageGalleryMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
+    private val videoCameraLaunchFn: () -> Unit,
+    private val videoGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
+    private val videoGalleryMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
+    private val pdfLauncher: ActivityResultLauncher<Array<String>>,
+    private val documentLauncher: ActivityResultLauncher<Array<String>>,
+    private val defaultDocMimes: Array<String>,
+    private val pendingCameraTargetRef: () -> CameraTarget,
+    private val setPendingCameraTarget: (CameraTarget) -> Unit,
+) : ShadeCore(
+    registrar = NoOpRegistrar,
+    config = config
+) {
+    override fun launch(action: ShadeAction) {
+        when (action) {
+            is ShadeAction.Image.Camera -> requireCamera(CameraTarget.IMAGE)
+            is ShadeAction.Image.Gallery -> launchImageGallery()
+            is ShadeAction.Video.Camera -> requireCamera(CameraTarget.VIDEO)
+            is ShadeAction.Video.Gallery -> launchVideoGallery()
+            is ShadeAction.Pdf -> launchPdf()
+            is ShadeAction.Document -> launchDocument(action)
+        }
+    }
+
+    override fun registerLaunchers() {}
+
+    private fun requireCamera(target: CameraTarget) {
+        setPendingCameraTarget(target)
+        if (hasPermissionFn(Manifest.permission.CAMERA)) {
+            when (target) {
+                CameraTarget.IMAGE -> imageCameraLaunchFn()
+                CameraTarget.VIDEO -> videoCameraLaunchFn()
+            }
+        } else {
+            cameraPermLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun launchImageGallery() {
+        val g = config.image?.gallery ?: return
+        if (g.isMultiSelect)
+            imageGalleryMultiLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+        else
+            imageGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+    }
+
+    private fun launchVideoGallery() {
+        if (config.video?.gallery == null) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val perm = readVideoPermission()
+            if (!hasPermissionFn(perm)) {
+                mediaPermLauncher.launch(perm)
+                return
+            }
+        }
+        launchVideoGalleryInternal(config, videoGallerySingleLauncher, videoGalleryMultiLauncher)
+    }
+
+    private fun launchPdf() {
+        if (config.pdf == null) {
+            config.pdf?.onFailure?.invoke(ShadeError.NotConfigured); return
+        }
+        pdfLauncher.launch(arrayOf("application/pdf"))
+    }
+
+    private fun launchDocument(action: ShadeAction.Document) {
+        if (config.document == null) {
+            config.document?.onFailure?.invoke(ShadeError.NotConfigured); return
+        }
+        val mimes = action.mimeTypes.takeIf { it.isNotEmpty() }?.toTypedArray() ?: defaultDocMimes
+        documentLauncher.launch(mimes)
+    }
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+enum class CameraTarget { IMAGE, VIDEO }
 
 private fun launchVideoGalleryInternal(
     config: ShadeConfig,
@@ -484,9 +616,30 @@ private fun launchVideoGalleryInternal(
 }
 
 private fun readVideoPermission() =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_VIDEO
-    else Manifest.permission.READ_EXTERNAL_STORAGE
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        Manifest.permission.READ_MEDIA_VIDEO
+    else
+        Manifest.permission.READ_EXTERNAL_STORAGE
 
+/** Mutable callback container — avoids capturing stale lambdas across recompositions. */
+internal class PermissionCallbackHolder {
+    var onCamera: ((Boolean) -> Unit)? = null
+    var onMedia: ((Boolean) -> Unit)? = null
+}
 
+internal class ResultCallbackHolder<T> {
+    var callback: ((T) -> Unit)? = null
+}
 
+/** No-op [ShadeRegistrar] stub — only used so [ShadeCore]'s constructor is satisfied. */
+private object NoOpRegistrar : ShadeRegistrar {
+    override val context: Context
+        get() = error("NoOpRegistrar.context should never be called")
 
+    override fun <I, O> register(
+        contract: ActivityResultContract<I, O>,
+        callback: (O) -> Unit
+    ): ActivityResultLauncher<I> = error("NoOpRegistrar.register should never be called")
+
+    override fun shouldShowRationale(permission: String) = false
+}

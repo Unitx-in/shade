@@ -1,9 +1,8 @@
-package com.unitx.shade_core.action
+package com.unitx.shade_core.registrar
 
 import android.content.Context
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
-import com.unitx.shade_core.core.ShadeRegistrar
 import com.unitx.shade_core.launcher.LauncherFactory
 
 internal class ComposeRegistrar(

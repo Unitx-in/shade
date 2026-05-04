@@ -1,4 +1,4 @@
-package com.unitx.shade_core.core
+package com.unitx.shade_core.registrar
 
 import android.content.Context
 import androidx.activity.ComponentActivity

@@ -2,7 +2,7 @@ package com.unitx.shade_core.launcher
 
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
-import com.unitx.shade_core.action.ComposeRegistrar
+import com.unitx.shade_core.registrar.ComposeRegistrar
 
 /**
  * Abstraction that lets [ComposeRegistrar] retrieve pre-registered
