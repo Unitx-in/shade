@@ -10,6 +10,8 @@ import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.unitx.shade_core.action.ShadeAction
+import com.unitx.shade_core.common.CameraTarget
+import com.unitx.shade_core.common.FileHandler
 import com.unitx.shade_core.dsl.ShadeConfig
 import com.unitx.shade_core.registrar.ShadeRegistrar
 import com.unitx.shade_core.result.ShadeError
@@ -212,7 +214,7 @@ open class ShadeCore(
                 return@register
             }
 
-            val file = copyUriToCache(uri, "PDF_", ".pdf")
+            val file = FileHandler.copyUriToCache(context,uri, "PDF_", ".pdf")
             if (file != null) {
                 config.pdf?.onResult?.invoke(ShadeResult.Single(uri, file))
             } else {
@@ -236,7 +238,7 @@ open class ShadeCore(
 
             val file =
                 if (docConfig?.copyToCache == true)
-                    copyUriToCache(uri, "DOC_", extensionFromUri(uri))
+                    FileHandler.copyUriToCache(context,uri, "DOC_", FileHandler.extensionFromUri(context,uri))
                 else null
 
             if (docConfig?.copyToCache == true && file == null) {
@@ -339,8 +341,6 @@ open class ShadeCore(
     // Camera internals
     // =========================================================================
 
-    private enum class CameraTarget { IMAGE, VIDEO }
-
     private var pendingCameraTarget: CameraTarget = CameraTarget.IMAGE
 
     private fun requireCameraPermission(target: CameraTarget) {
@@ -360,7 +360,7 @@ open class ShadeCore(
     }
 
     private fun launchImageCamera() {
-        val (file, uri) = createTempFile("IMG_", ".jpg") ?: run {
+        val (file, uri) = FileHandler.createTempFile(context,"IMG_", ".jpg") ?: run {
             config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed)
             return
         }
@@ -370,7 +370,7 @@ open class ShadeCore(
     }
 
     private fun launchVideoCamera() {
-        val (file, uri) = createTempFile("VID_", ".mp4") ?: run {
+        val (file, uri) = FileHandler.createTempFile(context,"VID_", ".mp4") ?: run {
             config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed)
             return
         }
@@ -392,48 +392,6 @@ open class ShadeCore(
     // Helpers
     // =========================================================================
 
-    private fun createTempFile(prefix: String, extension: String): Pair<File, Uri>? {
-        return try {
-            val file = File.createTempFile(prefix, extension, context.cacheDir)
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
-            Pair(file, uri)
-        } catch (e: IOException) {
-            null
-        }
-    }
-
-    private fun copyUriToCache(uri: Uri, prefix: String, extension: String): File? {
-        return try {
-            val file = File.createTempFile(prefix, extension, context.cacheDir)
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                file.outputStream().use { output -> input.copyTo(output) }
-            }
-            file
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    private fun extensionFromUri(uri: Uri): String {
-        val mime = context.contentResolver.getType(uri) ?: return ".bin"
-        return when {
-            mime.contains("pdf") -> ".pdf"
-            mime.contains("msword") -> ".doc"
-            mime.contains("wordprocess") -> ".docx"
-            mime.contains("ms-excel") -> ".xls"
-            mime.contains("spreadsheet") -> ".xlsx"
-            mime.contains("powerpoint") -> ".ppt"
-            mime.contains("presentati") -> ".pptx"
-            mime.contains("text/plain") -> ".txt"
-            mime.contains("text/csv") -> ".csv"
-            mime.contains("rtf") -> ".rtf"
-            else -> ".bin"
-        }
-    }
 
     private fun hasPermission(permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED

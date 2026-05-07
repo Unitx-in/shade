@@ -32,14 +32,15 @@ class MainActivity : ComponentActivity() {
                             .padding(innerPadding)
                     ) {
 
-                        Text("hello live apk")
-
                         val context = LocalContext.current
                         val shade = rememberShade {
                             image {
-                                camera{
+                                camera {
                                     onResult { captured->
                                         Toast.makeText(context, "Image captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
+                                    }
+                                    onFailure { error->
+
                                     }
                                 }
                             }

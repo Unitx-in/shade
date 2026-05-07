@@ -16,12 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import com.unitx.shade_core.action.ShadeAction
+import com.unitx.shade_core.common.CameraTarget
+import com.unitx.shade_core.common.FileHandler
 import com.unitx.shade_core.core.DocumentMimeType
 import com.unitx.shade_core.core.ShadeCore
 import com.unitx.shade_core.dsl.ShadeConfig
-import com.unitx.shade_core.registrar.ShadeRegistrar
 import com.unitx.shade_core.result.ShadeError
 import com.unitx.shade_core.result.ShadeResult
 import java.io.File
@@ -30,9 +30,14 @@ import java.io.File
  * Composable hook that creates and remembers a [ShadeCore] instance
  * for the lifetime of the composition.
  *
- * All activity result launchers are registered via
- * [rememberLauncherForActivityResult] — which means they survive
- * recomposition correctly and respect the Compose lifecycle.
+ * All launchers are registered unconditionally (Compose does not allow
+ * conditional composable calls), but [ComposeShadeCore.launch] guards
+ * every dispatch with a config null-check — unconfigured launchers are
+ * never actually fired.
+ *
+ * Raw Android results ([Boolean], [Uri?], [List<Uri>]) are converted to
+ * [ShadeResult] immediately at each launcher boundary — [ShadeResult] is
+ * the only type that flows through the rest of the wiring.
  *
  * The returned [ShadeCore] is stable across recompositions; call
  * [ShadeCore.launch] from any event handler.
@@ -47,9 +52,7 @@ import java.io.File
  *
  *         image {
  *             camera {
- *                 onResult { result ->
- *                     viewModel.onImageCaptured(result.file, result.uri)
- *                 }
+ *                 onResult { result -> viewModel.onImageCaptured(result.file, result.uri) }
  *                 onFailure { error -> viewModel.onError(error) }
  *             }
  *             gallery {
@@ -65,59 +68,12 @@ import java.io.File
  *             }
  *         }
  *
- *         video {
- *             camera {
- *                 onResult { result -> viewModel.onVideoRecorded(result.file, result.uri) }
- *                 onFailure { error -> viewModel.onError(error) }
- *             }
- *             gallery {
- *                 onResult { result -> viewModel.onVideoPicked((result as ShadeResult.Single).uri) }
- *                 onFailure { error -> viewModel.onError(error) }
- *             }
- *         }
- *
  *         pdf {
  *             onResult { result -> viewModel.onPdfPicked(result.uri, result.file!!) }
  *             onFailure { error -> viewModel.onError(error) }
  *         }
- *
- *         document {
- *             copyToCache = true
- *             onResult { result -> viewModel.onDocumentPicked(result.uri, result.file) }
- *             onFailure { error -> viewModel.onError(error) }
- *         }
- *     }
- *
- *     Column {
- *         Button(onClick = { shade.launch(ShadeAction.Image.Camera)  }) { Text("Camera")        }
- *         Button(onClick = { shade.launch(ShadeAction.Image.Gallery) }) { Text("Gallery")       }
- *         Button(onClick = { shade.launch(ShadeAction.Video.Camera)  }) { Text("Record video")  }
- *         Button(onClick = { shade.launch(ShadeAction.Video.Gallery) }) { Text("Pick video")    }
- *         Button(onClick = { shade.launch(ShadeAction.Pdf)           }) { Text("Pick PDF")      }
- *         Button(onClick = { shade.launch(ShadeAction.Document())    }) { Text("Pick document") }
  *     }
  * }
- * ```
- *
- * ## Host detection
- *
- * `rememberShade` works on both [androidx.activity.ComponentActivity] and
- * any [androidx.fragment.app.FragmentActivity] host — it resolves
- * `shouldShowRequestPermissionRationale` via [LocalContext] cast to [Activity].
- *
- * ## FileProvider (required for camera capture)
- *
- * Add to your **AndroidManifest.xml**:
- * ```xml
- * <provider
- *     android:name="androidx.core.content.FileProvider"
- *     android:authorities="${applicationId}.fileprovider"
- *     android:exported="false"
- *     android:grantUriPermissions="true">
- *     <meta-data
- *         android:name="android.support.FILE_PROVIDER_PATHS"
- *         android:resource="@xml/shade_file_paths" />
- * </provider>
  * ```
  */
 @Composable
@@ -126,102 +82,161 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val context = LocalContext.current
     val config = remember { ShadeConfig().apply(block) }
 
-    // ── Permission launchers ──────────────────────────────────────────────────
+    val captureState = remember { CaptureState() }
+    val permCallbacks = remember { PermissionCallbackHolder() }
 
-    val permissionCallbacks = remember { PermissionCallbackHolder() }
+    // ── Permission launchers ──────────────────────────────────────────────────
 
     val cameraPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> permissionCallbacks.onCamera?.invoke(granted) }
+    ) { granted -> permCallbacks.onCamera?.invoke(granted) }
 
     val mediaPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> permissionCallbacks.onMedia?.invoke(granted) }
+    ) { granted -> permCallbacks.onMedia?.invoke(granted) }
 
     // ── Image camera ──────────────────────────────────────────────────────────
 
-    val imageCameraCallbacks = remember { ResultCallbackHolder<Boolean>() }
+    val imageCameraCallback = remember { ShadeResultHolder() }
     val imageCameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
-    ) { success -> imageCameraCallbacks.callback?.invoke(success) }
+    ) { success ->
+        val file = captureState.file
+        val uri = captureState.uri
+        captureState.clear()
+        val result: ShadeResult? = if (success && file != null && uri != null)
+            ShadeResult.Captured(file, uri)
+        else {
+            file?.delete(); null
+        }
+        imageCameraCallback.invoke(result, ShadeError.CaptureFailed)
+    }
 
     // ── Image gallery single ──────────────────────────────────────────────────
 
-    val imageGallerySingleCallbacks = remember { ResultCallbackHolder<Uri?>() }
+    val imageGallerySingleCallback = remember { ShadeResultHolder() }
     val imageGallerySingleLauncher = rememberLauncherForActivityResult(
         PickVisualMedia()
-    ) { uri -> imageGallerySingleCallbacks.callback?.invoke(uri) }
+    ) { uri ->
+        val result: ShadeResult? = uri?.let { ShadeResult.Single(it) }
+        imageGallerySingleCallback.invoke(result, ShadeError.PickCancelled)
+    }
 
     // ── Image gallery multi ───────────────────────────────────────────────────
 
-    val imageGalleryMultiCallbacks = remember { ResultCallbackHolder<List<Uri>>() }
+    val imageGalleryMultiCallback = remember { ShadeResultHolder() }
     val imageGalleryMultiLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(
             maxItems = config.image?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
         )
-    ) { uris -> imageGalleryMultiCallbacks.callback?.invoke(uris) }
+    ) { uris ->
+        val result: ShadeResult? = if (uris.isNotEmpty()) ShadeResult.Multiple(uris) else null
+        imageGalleryMultiCallback.invoke(result, ShadeError.PickCancelled)
+    }
 
     // ── Video camera ──────────────────────────────────────────────────────────
 
-    val videoCameraCallbacks = remember { ResultCallbackHolder<Boolean>() }
+    val videoCameraCallback = remember { ShadeResultHolder() }
     val videoCameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CaptureVideo()
-    ) { success -> videoCameraCallbacks.callback?.invoke(success) }
+    ) { success ->
+        val file = captureState.file
+        val uri = captureState.uri
+        captureState.clear()
+        val result: ShadeResult? = if (success && file != null && uri != null)
+            ShadeResult.Captured(file, uri)
+        else {
+            file?.delete(); null
+        }
+        videoCameraCallback.invoke(result, ShadeError.CaptureFailed)
+    }
 
     // ── Video gallery single ──────────────────────────────────────────────────
 
-    val videoGallerySingleCallbacks = remember { ResultCallbackHolder<Uri?>() }
+    val videoGallerySingleCallback = remember { ShadeResultHolder() }
     val videoGallerySingleLauncher = rememberLauncherForActivityResult(
         PickVisualMedia()
-    ) { uri -> videoGallerySingleCallbacks.callback?.invoke(uri) }
+    ) { uri ->
+        val result: ShadeResult? = uri?.let { ShadeResult.Single(it) }
+        videoGallerySingleCallback.invoke(result, ShadeError.PickCancelled)
+    }
 
     // ── Video gallery multi ───────────────────────────────────────────────────
 
-    val videoGalleryMultiCallbacks = remember { ResultCallbackHolder<List<Uri>>() }
+    val videoGalleryMultiCallback = remember { ShadeResultHolder() }
     val videoGalleryMultiLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(
             maxItems = config.video?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
         )
-    ) { uris -> videoGalleryMultiCallbacks.callback?.invoke(uris) }
+    ) { uris ->
+        val result: ShadeResult? = if (uris.isNotEmpty()) ShadeResult.Multiple(uris) else null
+        videoGalleryMultiCallback.invoke(result, ShadeError.PickCancelled)
+    }
 
     // ── PDF picker ────────────────────────────────────────────────────────────
 
-    val pdfCallbacks = remember { ResultCallbackHolder<Uri?>() }
+    val pdfCallback = remember { ShadeResultHolder() }
     val pdfLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
-    ) { uri -> pdfCallbacks.callback?.invoke(uri) }
+    ) { uri ->
+        val result: ShadeResult? = uri?.let {
+            val file = FileHandler.copyUriToCache(context, it, "PDF_", ".pdf")
+            if (file != null) ShadeResult.Single(it, file) else null
+        }
+        val error = if (uri != null && result == null) ShadeError.FileSaveFailed
+        else ShadeError.PickCancelled
+        pdfCallback.invoke(result, error)
+    }
 
     // ── Document picker ───────────────────────────────────────────────────────
 
-    val documentCallbacks = remember { ResultCallbackHolder<Uri?>() }
+    val documentCallback = remember { ShadeResultHolder() }
     val documentLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
-    ) { uri -> documentCallbacks.callback?.invoke(uri) }
+    ) { uri ->
+        val docConfig = config.document
+        val result: ShadeResult? = uri?.let {
+            val file = if (docConfig?.copyToCache == true)
+                FileHandler.copyUriToCache(
+                    context,
+                    it,
+                    "DOC_",
+                    FileHandler.extensionFromUri(context, it)
+                )
+            else null
+            if (docConfig?.copyToCache == true && file == null) null
+            else ShadeResult.Single(it, file)
+        }
+        val error = if (uri != null && result == null) ShadeError.FileSaveFailed
+        else ShadeError.PickCancelled
+        documentCallback.invoke(result, error)
+    }
 
-    // ── Build and remember ShadeCore ──────────────────────────────────────────
+    // ── Wire and build ────────────────────────────────────────────────────────
 
     val shade = remember {
-        buildShadeCore(
+        wireCallbacks(
             context = context,
             config = config,
-            permissionCallbacks = permissionCallbacks,
+            captureState = captureState,
+            permCallbacks = permCallbacks,
             cameraPermLauncher = cameraPermLauncher,
             mediaPermLauncher = mediaPermLauncher,
-            imageCameraCallbacks = imageCameraCallbacks,
+            imageCameraCallback = imageCameraCallback,
             imageCameraLauncher = imageCameraLauncher,
-            imageGallerySingleCallbacks = imageGallerySingleCallbacks,
+            imageGallerySingleCallback = imageGallerySingleCallback,
             imageGallerySingleLauncher = imageGallerySingleLauncher,
-            imageGalleryMultiCallbacks = imageGalleryMultiCallbacks,
+            imageGalleryMultiCallback = imageGalleryMultiCallback,
             imageGalleryMultiLauncher = imageGalleryMultiLauncher,
-            videoCameraCallbacks = videoCameraCallbacks,
+            videoCameraCallback = videoCameraCallback,
             videoCameraLauncher = videoCameraLauncher,
-            videoGallerySingleCallbacks = videoGallerySingleCallbacks,
+            videoGallerySingleCallback = videoGallerySingleCallback,
             videoGallerySingleLauncher = videoGallerySingleLauncher,
-            videoGalleryMultiCallbacks = videoGalleryMultiCallbacks,
+            videoGalleryMultiCallback = videoGalleryMultiCallback,
             videoGalleryMultiLauncher = videoGalleryMultiLauncher,
-            pdfCallbacks = pdfCallbacks,
+            pdfCallback = pdfCallback,
             pdfLauncher = pdfLauncher,
-            documentCallbacks = documentCallbacks,
+            documentCallback = documentCallback,
             documentLauncher = documentLauncher,
         )
     }
@@ -230,178 +245,85 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
 }
 
 // =============================================================================
-// Internal builder — wires all Compose launchers into a ShadeCore instance
+// Wiring
 // =============================================================================
 
-private fun buildShadeCore(
+private fun wireCallbacks(
     context: Context,
     config: ShadeConfig,
-    permissionCallbacks: PermissionCallbackHolder,
+    captureState: CaptureState,
+    permCallbacks: PermissionCallbackHolder,
     cameraPermLauncher: ActivityResultLauncher<String>,
     mediaPermLauncher: ActivityResultLauncher<String>,
-    imageCameraCallbacks: ResultCallbackHolder<Boolean>,
+    imageCameraCallback: ShadeResultHolder,
     imageCameraLauncher: ActivityResultLauncher<Uri>,
-    imageGallerySingleCallbacks: ResultCallbackHolder<Uri?>,
+    imageGallerySingleCallback: ShadeResultHolder,
     imageGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
-    imageGalleryMultiCallbacks: ResultCallbackHolder<List<Uri>>,
+    imageGalleryMultiCallback: ShadeResultHolder,
     imageGalleryMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
-    videoCameraCallbacks: ResultCallbackHolder<Boolean>,
+    videoCameraCallback: ShadeResultHolder,
     videoCameraLauncher: ActivityResultLauncher<Uri>,
-    videoGallerySingleCallbacks: ResultCallbackHolder<Uri?>,
+    videoGallerySingleCallback: ShadeResultHolder,
     videoGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
-    videoGalleryMultiCallbacks: ResultCallbackHolder<List<Uri>>,
+    videoGalleryMultiCallback: ShadeResultHolder,
     videoGalleryMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
-    pdfCallbacks: ResultCallbackHolder<Uri?>,
+    pdfCallback: ShadeResultHolder,
     pdfLauncher: ActivityResultLauncher<Array<String>>,
-    documentCallbacks: ResultCallbackHolder<Uri?>,
+    documentCallback: ShadeResultHolder,
     documentLauncher: ActivityResultLauncher<Array<String>>,
 ): ShadeCore {
 
-    var tempCaptureFile: File? = null
-    var tempCaptureUri: Uri? = null
-
-    fun createTempFile(prefix: String, ext: String): Pair<File, Uri>? = try {
-        val file = File.createTempFile(prefix, ext, context.cacheDir)
-        val uri = FileProvider.getUriForFile(
-            context, "${context.packageName}.fileprovider", file
-        )
-        Pair(file, uri)
-    } catch (e: Exception) {
-        null
-    }
-
-    fun copyUriToCache(uri: Uri, prefix: String, ext: String): File? = try {
-        val file = File.createTempFile(prefix, ext, context.cacheDir)
-        context.contentResolver.openInputStream(uri)?.use { i ->
-            file.outputStream().use { o -> i.copyTo(o) }
-        }
-        file
-    } catch (e: Exception) {
-        null
-    }
-
-    fun extensionFromUri(uri: Uri): String {
-        val mime = context.contentResolver.getType(uri) ?: return ".bin"
-        return when {
-            mime.contains("pdf") -> ".pdf"
-            mime.contains("msword") -> ".doc"
-            mime.contains("wordprocess") -> ".docx"
-            mime.contains("ms-excel") -> ".xls"
-            mime.contains("spreadsheet") -> ".xlsx"
-            mime.contains("powerpoint") -> ".ppt"
-            mime.contains("presentati") -> ".pptx"
-            mime.contains("text/plain") -> ".txt"
-            mime.contains("text/csv") -> ".csv"
-            mime.contains("rtf") -> ".rtf"
-            else -> ".bin"
-        }
-    }
-
     fun hasPermission(perm: String) =
-        ContextCompat.checkSelfPermission(context, perm) ==
-                PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
 
-    fun rationaleChecker(perm: String) =
+    fun shouldShowRationale(perm: String) =
         (context as? Activity)?.shouldShowRequestPermissionRationale(perm) ?: false
 
-    // ── Wire image camera ─────────────────────────────────────────────────────
+    // ── Route ShadeResult → DSL config callbacks ──────────────────────────────
 
-    imageCameraCallbacks.callback = { success ->
-        val file = tempCaptureFile
-        val uri = tempCaptureUri
-        tempCaptureFile = null; tempCaptureUri = null
-        if (success && file != null && uri != null) {
-            config.image?.camera?.onResult?.invoke(ShadeResult.Captured(file, uri))
-        } else {
-            file?.delete()
-            config.image?.camera?.onFailure?.invoke(ShadeError.CaptureFailed)
-        }
-    }
+    imageCameraCallback.onResult =
+        { config.image?.camera?.onResult?.invoke(it as ShadeResult.Captured) }
+    imageCameraCallback.onFailure = { config.image?.camera?.onFailure?.invoke(it) }
 
-    // ── Wire image gallery ────────────────────────────────────────────────────
+    imageGallerySingleCallback.onResult = { config.image?.gallery?.onResult?.invoke(it) }
+    imageGallerySingleCallback.onFailure = { config.image?.gallery?.onFailure?.invoke(it) }
 
-    imageGallerySingleCallbacks.callback = { uri ->
-        if (uri != null) config.image?.gallery?.onResult?.invoke(ShadeResult.Single(uri))
-        else config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
-    }
+    imageGalleryMultiCallback.onResult = { config.image?.gallery?.onResult?.invoke(it) }
+    imageGalleryMultiCallback.onFailure = { config.image?.gallery?.onFailure?.invoke(it) }
 
-    imageGalleryMultiCallbacks.callback = { uris ->
-        if (uris.isNotEmpty()) config.image?.gallery?.onResult?.invoke(ShadeResult.Multiple(uris))
-        else config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
-    }
+    videoCameraCallback.onResult =
+        { config.video?.camera?.onResult?.invoke(it as ShadeResult.Captured) }
+    videoCameraCallback.onFailure = { config.video?.camera?.onFailure?.invoke(it) }
 
-    // ── Wire video camera ─────────────────────────────────────────────────────
+    videoGallerySingleCallback.onResult = { config.video?.gallery?.onResult?.invoke(it) }
+    videoGallerySingleCallback.onFailure = { config.video?.gallery?.onFailure?.invoke(it) }
 
-    videoCameraCallbacks.callback = { success ->
-        val file = tempCaptureFile
-        val uri = tempCaptureUri
-        tempCaptureFile = null; tempCaptureUri = null
-        if (success && file != null && uri != null) {
-            config.video?.camera?.onResult?.invoke(ShadeResult.Captured(file, uri))
-        } else {
-            file?.delete()
-            config.video?.camera?.onFailure?.invoke(ShadeError.CaptureFailed)
-        }
-    }
+    videoGalleryMultiCallback.onResult = { config.video?.gallery?.onResult?.invoke(it) }
+    videoGalleryMultiCallback.onFailure = { config.video?.gallery?.onFailure?.invoke(it) }
 
-    // ── Wire video gallery ────────────────────────────────────────────────────
+    pdfCallback.onResult = { config.pdf?.onResult?.invoke(it as ShadeResult.Single) }
+    pdfCallback.onFailure = { config.pdf?.onFailure?.invoke(it) }
 
-    videoGallerySingleCallbacks.callback = { uri ->
-        if (uri != null) config.video?.gallery?.onResult?.invoke(ShadeResult.Single(uri))
-        else config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
-    }
+    documentCallback.onResult = { config.document?.onResult?.invoke(it as ShadeResult.Single) }
+    documentCallback.onFailure = { config.document?.onFailure?.invoke(it) }
 
-    videoGalleryMultiCallbacks.callback = { uris ->
-        if (uris.isNotEmpty()) config.video?.gallery?.onResult?.invoke(ShadeResult.Multiple(uris))
-        else config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
-    }
-
-    // ── Wire PDF ──────────────────────────────────────────────────────────────
-
-    pdfCallbacks.callback = { uri ->
-        if (uri == null) {
-            config.pdf?.onFailure?.invoke(ShadeError.PickCancelled)
-        } else {
-            val file = copyUriToCache(uri, "PDF_", ".pdf")
-            if (file != null) config.pdf?.onResult?.invoke(ShadeResult.Single(uri, file))
-            else config.pdf?.onFailure?.invoke(ShadeError.FileSaveFailed)
-        }
-    }
-
-    // ── Wire document ─────────────────────────────────────────────────────────
-
-    documentCallbacks.callback = { uri ->
-        val docConfig = config.document
-        if (uri == null) {
-            docConfig?.onFailure?.invoke(ShadeError.PickCancelled)
-        } else {
-            val file = if (docConfig?.copyToCache == true)
-                copyUriToCache(uri, "DOC_", extensionFromUri(uri))
-            else null
-            if (docConfig?.copyToCache == true && file == null)
-                docConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
-            else
-                docConfig?.onResult?.invoke(ShadeResult.Single(uri, file))
-        }
-    }
-
-    // ── Wire permission callbacks ─────────────────────────────────────────────
-
-    var pendingCameraTarget = CameraTarget.IMAGE
+    // ── Camera helpers ────────────────────────────────────────────────────────
 
     fun launchImageCamera() {
-        val (file, uri) = createTempFile("IMG_", ".jpg") ?: run {
+        val (file, uri) = FileHandler.createTempFile(context, "IMG_", ".jpg") ?: run {
             config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return
         }
-        tempCaptureFile = file; tempCaptureUri = uri
+        captureState.file = file
+        captureState.uri = uri
         imageCameraLauncher.launch(uri)
     }
 
     fun launchVideoCamera() {
-        val (file, uri) = createTempFile("VID_", ".mp4") ?: run {
+        val (file, uri) = FileHandler.createTempFile(context, "VID_", ".mp4") ?: run {
             config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return
         }
-        tempCaptureFile = file; tempCaptureUri = uri
+        captureState.file = file
+        captureState.uri = uri
         videoCameraLauncher.launch(uri)
     }
 
@@ -410,82 +332,39 @@ private fun buildShadeCore(
         CameraTarget.VIDEO -> launchVideoCamera()
     }
 
-    permissionCallbacks.onCamera = { granted ->
+    // ── Permission callbacks ──────────────────────────────────────────────────
+
+    var pendingTarget = CameraTarget.IMAGE
+
+    permCallbacks.onCamera = { granted ->
         if (granted) {
-            executeCamera(pendingCameraTarget)
+            executeCamera(pendingTarget)
         } else {
-            val error = if (rationaleChecker(Manifest.permission.CAMERA))
+            val error = if (shouldShowRationale(Manifest.permission.CAMERA))
                 ShadeError.PermissionDenied else ShadeError.PermissionPermanentlyDenied
-            when (pendingCameraTarget) {
+            when (pendingTarget) {
                 CameraTarget.IMAGE -> config.image?.camera?.onFailure?.invoke(error)
                 CameraTarget.VIDEO -> config.video?.camera?.onFailure?.invoke(error)
             }
         }
-        pendingCameraTarget = CameraTarget.IMAGE
+        pendingTarget = CameraTarget.IMAGE
     }
 
-    permissionCallbacks.onMedia = { granted ->
+    permCallbacks.onMedia = { granted ->
         if (granted) {
             launchVideoGalleryInternal(
-                config, videoGallerySingleLauncher, videoGalleryMultiLauncher
+                config,
+                videoGallerySingleLauncher,
+                videoGalleryMultiLauncher
             )
         } else {
             val perm = readVideoPermission()
-            val error = if (rationaleChecker(perm))
+            val error = if (shouldShowRationale(perm))
                 ShadeError.PermissionDenied else ShadeError.PermissionPermanentlyDenied
             config.video?.gallery?.onFailure?.invoke(error)
         }
     }
 
-    // ── Build the registrar-backed ShadeCore ──────────────────────────────────
-
-    val registrar = object : ShadeRegistrar {
-        override val context = context
-
-        @Suppress("UNCHECKED_CAST")
-        override fun <I, O> register(
-            contract: ActivityResultContract<I, O>,
-            callback: (O) -> Unit
-        ): ActivityResultLauncher<I> {
-            // All launchers are already registered via rememberLauncherForActivityResult above.
-            // This registrar is only used so ShadeCore can call launch() on named launchers.
-            // We map each contract type to its pre-built launcher here.
-            return when (contract) {
-                is ActivityResultContracts.RequestPermission ->
-                    when {
-                        permissionCallbacks.onCamera == null ->
-                            cameraPermLauncher as ActivityResultLauncher<I>
-
-                        else ->
-                            mediaPermLauncher as ActivityResultLauncher<I>
-                    }
-
-                is ActivityResultContracts.TakePicture ->
-                    imageCameraLauncher as ActivityResultLauncher<I>
-
-                is PickVisualMedia ->
-                    imageGallerySingleLauncher as ActivityResultLauncher<I>
-
-                is ActivityResultContracts.PickMultipleVisualMedia ->
-                    imageGalleryMultiLauncher as ActivityResultLauncher<I>
-
-                is ActivityResultContracts.CaptureVideo ->
-                    videoCameraLauncher as ActivityResultLauncher<I>
-
-                is ActivityResultContracts.OpenDocument ->
-                    pdfLauncher as ActivityResultLauncher<I>
-
-                else -> throw IllegalArgumentException(
-                    "Unrecognised contract in ComposeRegistrar: ${contract::class.simpleName}"
-                )
-            }
-        }
-
-        override fun shouldShowRationale(permission: String) = rationaleChecker(permission)
-    }
-
-    // We bypass ShadeCore's internal launcher wiring by building a lightweight
-    // shell that delegates launch() directly to our pre-wired Compose launchers.
     return ComposeShadeCore(
         config = config,
         hasPermissionFn = ::hasPermission,
@@ -500,110 +379,16 @@ private fun buildShadeCore(
         pdfLauncher = pdfLauncher,
         documentLauncher = documentLauncher,
         defaultDocMimes = DocumentMimeType.ALL_VALUES,
-        pendingCameraTargetRef = { pendingCameraTarget },
-        setPendingCameraTarget = { pendingCameraTarget = it },
+        getPendingTarget = { pendingTarget },
+        setPendingTarget = { pendingTarget = it },
     )
-}
-
-// =============================================================================
-// ComposeShadeCore — thin ShadeCore subclass that dispatches to Compose launchers
-// =============================================================================
-
-/**
- * A [ShadeCore] variant that bypasses the registrar-based launcher wiring
- * and instead calls pre-built Compose [ActivityResultLauncher] instances directly.
- *
- * This avoids any unsafe casting in the registrar and keeps the launch
- * path clean and type-safe.
- */
-internal class ComposeShadeCore(
-    private val config: ShadeConfig,
-    private val hasPermissionFn: (String) -> Boolean,
-    private val cameraPermLauncher: ActivityResultLauncher<String>,
-    private val mediaPermLauncher: ActivityResultLauncher<String>,
-    private val imageCameraLaunchFn: () -> Unit,
-    private val imageGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
-    private val imageGalleryMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
-    private val videoCameraLaunchFn: () -> Unit,
-    private val videoGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
-    private val videoGalleryMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
-    private val pdfLauncher: ActivityResultLauncher<Array<String>>,
-    private val documentLauncher: ActivityResultLauncher<Array<String>>,
-    private val defaultDocMimes: Array<String>,
-    private val pendingCameraTargetRef: () -> CameraTarget,
-    private val setPendingCameraTarget: (CameraTarget) -> Unit,
-) : ShadeCore(
-    registrar = NoOpRegistrar,
-    config = config
-) {
-    override fun launch(action: ShadeAction) {
-        when (action) {
-            is ShadeAction.Image.Camera -> requireCamera(CameraTarget.IMAGE)
-            is ShadeAction.Image.Gallery -> launchImageGallery()
-            is ShadeAction.Video.Camera -> requireCamera(CameraTarget.VIDEO)
-            is ShadeAction.Video.Gallery -> launchVideoGallery()
-            is ShadeAction.Pdf -> launchPdf()
-            is ShadeAction.Document -> launchDocument(action)
-        }
-    }
-
-    override fun registerLaunchers() {}
-
-    private fun requireCamera(target: CameraTarget) {
-        setPendingCameraTarget(target)
-        if (hasPermissionFn(Manifest.permission.CAMERA)) {
-            when (target) {
-                CameraTarget.IMAGE -> imageCameraLaunchFn()
-                CameraTarget.VIDEO -> videoCameraLaunchFn()
-            }
-        } else {
-            cameraPermLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
-    private fun launchImageGallery() {
-        val g = config.image?.gallery ?: return
-        if (g.isMultiSelect)
-            imageGalleryMultiLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
-        else
-            imageGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
-    }
-
-    private fun launchVideoGallery() {
-        if (config.video?.gallery == null) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val perm = readVideoPermission()
-            if (!hasPermissionFn(perm)) {
-                mediaPermLauncher.launch(perm)
-                return
-            }
-        }
-        launchVideoGalleryInternal(config, videoGallerySingleLauncher, videoGalleryMultiLauncher)
-    }
-
-    private fun launchPdf() {
-        if (config.pdf == null) {
-            config.pdf?.onFailure?.invoke(ShadeError.NotConfigured); return
-        }
-        pdfLauncher.launch(arrayOf("application/pdf"))
-    }
-
-    private fun launchDocument(action: ShadeAction.Document) {
-        if (config.document == null) {
-            config.document?.onFailure?.invoke(ShadeError.NotConfigured); return
-        }
-        val mimes = action.mimeTypes.takeIf { it.isNotEmpty() }?.toTypedArray() ?: defaultDocMimes
-        documentLauncher.launch(mimes)
-    }
 }
 
 // =============================================================================
 // Helpers
 // =============================================================================
 
-enum class CameraTarget { IMAGE, VIDEO }
-
-private fun launchVideoGalleryInternal(
+internal fun launchVideoGalleryInternal(
     config: ShadeConfig,
     singleLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
     multiLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
@@ -615,31 +400,35 @@ private fun launchVideoGalleryInternal(
         singleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.VideoOnly))
 }
 
-private fun readVideoPermission() =
+internal fun readVideoPermission() =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         Manifest.permission.READ_MEDIA_VIDEO
     else
         Manifest.permission.READ_EXTERNAL_STORAGE
 
-/** Mutable callback container — avoids capturing stale lambdas across recompositions. */
+// =============================================================================
+// Internal holders
+// =============================================================================
+
+internal class CaptureState {
+    var file: File? = null
+    var uri: Uri? = null
+    fun clear() {
+        file = null; uri = null
+    }
+}
+
+internal class ShadeResultHolder {
+    var onResult: ((ShadeResult) -> Unit)? = null
+    var onFailure: ((ShadeError) -> Unit)? = null
+
+    fun invoke(result: ShadeResult?, fallbackError: ShadeError) {
+        if (result != null) onResult?.invoke(result)
+        else onFailure?.invoke(fallbackError)
+    }
+}
+
 internal class PermissionCallbackHolder {
     var onCamera: ((Boolean) -> Unit)? = null
     var onMedia: ((Boolean) -> Unit)? = null
-}
-
-internal class ResultCallbackHolder<T> {
-    var callback: ((T) -> Unit)? = null
-}
-
-/** No-op [ShadeRegistrar] stub — only used so [ShadeCore]'s constructor is satisfied. */
-private object NoOpRegistrar : ShadeRegistrar {
-    override val context: Context
-        get() = error("NoOpRegistrar.context should never be called")
-
-    override fun <I, O> register(
-        contract: ActivityResultContract<I, O>,
-        callback: (O) -> Unit
-    ): ActivityResultLauncher<I> = error("NoOpRegistrar.register should never be called")
-
-    override fun shouldShowRationale(permission: String) = false
 }
