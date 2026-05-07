@@ -2,7 +2,7 @@ package com.unitx.shade_core.launcher
 
 import androidx.fragment.app.Fragment
 import com.unitx.shade_core.core.ShadeCore
-import com.unitx.shade_core.dsl.ShadeConfig
+import com.unitx.shade_core.config.ShadeConfig
 import com.unitx.shade_core.registrar.FragmentRegistrar
 
 /**

@@ -1,4 +1,4 @@
-package com.unitx.shade_core.dsl
+package com.unitx.shade_core.config
 
 import android.net.Uri
 import com.unitx.shade_core.result.ShadeError

@@ -1,13 +1,11 @@
 package com.unitx.shade_core.common
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import java.io.File
 
-internal object FileHandler{
+internal object FileHelper{
 
     internal fun createTempFile(context: Context, prefix: String, ext: String): Pair<File, Uri>? = try {
         val file = File.createTempFile(prefix, ext, context.cacheDir)

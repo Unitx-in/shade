@@ -1,4 +1,4 @@
-package com.unitx.shade_core.dsl
+package com.unitx.shade_core.config
 
 import com.unitx.shade_core.result.ShadeError
 import com.unitx.shade_core.result.ShadeResult

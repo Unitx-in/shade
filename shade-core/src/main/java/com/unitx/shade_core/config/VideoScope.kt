@@ -1,4 +1,4 @@
-package com.unitx.shade_core.dsl
+package com.unitx.shade_core.config
 
 /**
  * DSL scope for video-related configuration.

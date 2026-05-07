@@ -1,23 +1,21 @@
 package com.unitx.shade_core.core
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import com.unitx.shade_core.action.ShadeAction
 import com.unitx.shade_core.common.CameraTarget
-import com.unitx.shade_core.common.FileHandler
-import com.unitx.shade_core.dsl.ShadeConfig
+import com.unitx.shade_core.common.DocumentMimeType
+import com.unitx.shade_core.common.FileHelper
+import com.unitx.shade_core.common.PermissionHelper
+import com.unitx.shade_core.config.ShadeConfig
 import com.unitx.shade_core.registrar.ShadeRegistrar
 import com.unitx.shade_core.result.ShadeError
 import com.unitx.shade_core.result.ShadeResult
 import java.io.File
-import java.io.IOException
 
 /**
  * Core engine. Do not instantiate directly — use [Shade.with] (XML/Fragment)
@@ -88,7 +86,7 @@ open class ShadeCore(
             if (granted) {
                 launchVideoGallery()
             } else {
-                val perm = readVideoPermission()
+                val perm = PermissionHelper.readVideoPermission()
                 val error =
                     if (registrar.shouldShowRationale(perm))
                         ShadeError.PermissionDenied
@@ -214,7 +212,7 @@ open class ShadeCore(
                 return@register
             }
 
-            val file = FileHandler.copyUriToCache(context,uri, "PDF_", ".pdf")
+            val file = FileHelper.copyUriToCache(context,uri, "PDF_", ".pdf")
             if (file != null) {
                 config.pdf?.onResult?.invoke(ShadeResult.Single(uri, file))
             } else {
@@ -238,7 +236,7 @@ open class ShadeCore(
 
             val file =
                 if (docConfig?.copyToCache == true)
-                    FileHandler.copyUriToCache(context,uri, "DOC_", FileHandler.extensionFromUri(context,uri))
+                    FileHelper.copyUriToCache(context,uri, "DOC_", FileHelper.extensionFromUri(context,uri))
                 else null
 
             if (docConfig?.copyToCache == true && file == null) {
@@ -308,8 +306,8 @@ open class ShadeCore(
     private fun handleVideoGallery() {
         if (config.video?.gallery == null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val perm = readVideoPermission()
-            if (!hasPermission(perm)) {
+            val perm = PermissionHelper.readVideoPermission()
+            if (!PermissionHelper.hasPermission(context, perm)) {
                 mediaPermissionLauncher.launch(perm)
                 return
             }
@@ -345,7 +343,7 @@ open class ShadeCore(
 
     private fun requireCameraPermission(target: CameraTarget) {
         pendingCameraTarget = target
-        if (hasPermission(Manifest.permission.CAMERA)) {
+        if (PermissionHelper.hasPermission(context,Manifest.permission.CAMERA)) {
             executeCamera(target)
         } else {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -360,7 +358,7 @@ open class ShadeCore(
     }
 
     private fun launchImageCamera() {
-        val (file, uri) = FileHandler.createTempFile(context,"IMG_", ".jpg") ?: run {
+        val (file, uri) = FileHelper.createTempFile(context,"IMG_", ".jpg") ?: run {
             config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed)
             return
         }
@@ -370,7 +368,7 @@ open class ShadeCore(
     }
 
     private fun launchVideoCamera() {
-        val (file, uri) = FileHandler.createTempFile(context,"VID_", ".mp4") ?: run {
+        val (file, uri) = FileHelper.createTempFile(context,"VID_", ".mp4") ?: run {
             config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed)
             return
         }
@@ -387,18 +385,4 @@ open class ShadeCore(
             videoGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.VideoOnly))
         }
     }
-
-    // =========================================================================
-    // Helpers
-    // =========================================================================
-
-
-    private fun hasPermission(permission: String): Boolean =
-        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-
-    private fun readVideoPermission(): String =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            Manifest.permission.READ_MEDIA_VIDEO
-        else
-            Manifest.permission.READ_EXTERNAL_STORAGE
 }

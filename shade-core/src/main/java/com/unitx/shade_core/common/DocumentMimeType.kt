@@ -1,4 +1,4 @@
-package com.unitx.shade_core.core
+package com.unitx.shade_core.common
 
 /**
  * Common document MIME types.

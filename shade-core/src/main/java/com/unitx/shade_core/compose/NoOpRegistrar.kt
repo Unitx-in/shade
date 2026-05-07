@@ -9,12 +9,12 @@ import com.unitx.shade_core.registrar.ShadeRegistrar
 /** No-op [ShadeRegistrar] stub — only used so [ShadeCore]'s constructor is satisfied. */
 object NoOpRegistrar : ShadeRegistrar {
     override val context: Context
-        get() = error("NoOpRegistrar.context should never be called")
+        get() = error("NoOpRegistrar.context must never be called")
 
     override fun <I, O> register(
         contract: ActivityResultContract<I, O>,
         callback: (O) -> Unit
-    ): ActivityResultLauncher<I> = error("NoOpRegistrar.register should never be called")
+    ): ActivityResultLauncher<I> = error("NoOpRegistrar.register must never be called")
 
     override fun shouldShowRationale(permission: String) = false
 }
