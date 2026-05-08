@@ -11,7 +11,7 @@ import androidx.core.app.ActivityCompat
  * (used by the Compose module internally, but also available if you want
  * to drive Shade from an Activity directly in XML projects).
  */
-class ActivityRegistrar(private val activity: ComponentActivity) : ShadeRegistrar {
+internal class ActivityRegistrar(private val activity: ComponentActivity) : ShadeRegistrar {
 
     override val context: Context
         get() = activity

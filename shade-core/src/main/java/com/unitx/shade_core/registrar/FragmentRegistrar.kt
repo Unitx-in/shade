@@ -11,7 +11,7 @@ import androidx.fragment.app.Fragment
  * Wrap your [Fragment] with this and pass it to [com.unitx.shade_core.core.ShadeCore] (or use
  * [Shade.with] which does this for you).
  */
-class FragmentRegistrar(private val fragment: Fragment) : ShadeRegistrar {
+internal class FragmentRegistrar(private val fragment: Fragment) : ShadeRegistrar {
 
     override val context: Context
         get() = fragment.requireContext()

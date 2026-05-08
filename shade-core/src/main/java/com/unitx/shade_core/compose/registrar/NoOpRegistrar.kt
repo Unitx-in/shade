@@ -6,7 +6,7 @@ import androidx.activity.result.contract.ActivityResultContract
 import com.unitx.shade_core.registrar.ShadeRegistrar
 
 /** No-op [com.unitx.shade_core.registrar.ShadeRegistrar] stub — only used so [com.unitx.shade_core.core.ShadeCore]'s constructor is satisfied. */
-object NoOpRegistrar : ShadeRegistrar {
+internal object NoOpRegistrar : ShadeRegistrar {
     override val context: Context
         get() = error("NoOpRegistrar.context must never be called")
 

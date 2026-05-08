@@ -1,9 +1,13 @@
 package com.unitx.shade_core.common.action
 
-
+/**
+ * Represents a specific media or file action to be performed by Shade.
+ *
+ * This sealed class hierarchy defines all supported operations, such as capturing
+ * media via camera, picking from a gallery, or selecting documents. Pass an instance
+ * of [ShadeAction] to `ShadeCore.launch()` to initiate the flow.
+ */
 sealed class ShadeAction {
-
-    // ─── Image ────────────────────────────────────────────────────────────────
 
     sealed class Image : ShadeAction() {
         object Camera : Image()
