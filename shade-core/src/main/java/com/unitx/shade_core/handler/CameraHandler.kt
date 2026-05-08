@@ -3,6 +3,7 @@ package com.unitx.shade_core.handler
 import android.Manifest
 import android.content.Context
 import android.net.Uri
+import androidx.activity.result.ActivityResultLauncher
 import com.unitx.shade_core.common.CameraTarget
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.PermissionHelper
@@ -31,47 +32,50 @@ internal class CameraHandler(
     private var tempCaptureUri: Uri? = null
 
     init {
-        registry.onCameraPermissionResult = { granted ->
-            if (granted) {
-                executeCamera(pendingTarget)
-            } else {
-                val error = if (registry.cameraPermissionLauncher.let {
-                        PermissionHelper.shouldShowRationale(context, Manifest.permission.CAMERA)
-                    })
-                    ShadeError.PermissionDenied
-                else
-                    ShadeError.PermissionPermanentlyDenied
+        registry.onCameraPermissionResult = result@{ granted ->
+            if (!granted) {
+                val error = if (PermissionHelper.shouldShowRationale(
+                        context,
+                        Manifest.permission.CAMERA
+                    )
+                ) ShadeError.PermissionDenied
+                else ShadeError.PermissionPermanentlyDenied
 
                 when (pendingTarget) {
                     CameraTarget.IMAGE -> config.image?.camera?.onFailure?.invoke(error)
                     CameraTarget.VIDEO -> config.video?.camera?.onFailure?.invoke(error)
                 }
+
+                pendingTarget = CameraTarget.IMAGE
+                return@result
             }
+
+            executeCamera(pendingTarget)
             pendingTarget = CameraTarget.IMAGE
         }
 
         registry.onImageCameraResult = { success ->
-            val file = tempCaptureFile
-            val uri  = tempCaptureUri
-            clearTempState()
-            if (success && file != null && uri != null) {
-                config.image?.camera?.onResult?.invoke(ShadeResult.Captured(file, uri))
-            } else {
-                file?.delete()
-                config.image?.camera?.onFailure?.invoke(ShadeError.CaptureFailed)
-            }
+            handleCameraResult(
+                success = success,
+                onFailure = {
+                    config.image?.camera?.onFailure?.invoke(
+                        ShadeError.CaptureFailed
+                    )
+                },
+                onResult = config.image?.camera?.onResult
+            )
         }
 
         registry.onVideoCameraResult = { success ->
-            val file = tempCaptureFile
-            val uri  = tempCaptureUri
-            clearTempState()
-            if (success && file != null && uri != null) {
-                config.video?.camera?.onResult?.invoke(ShadeResult.Captured(file, uri))
-            } else {
-                file?.delete()
-                config.video?.camera?.onFailure?.invoke(ShadeError.CaptureFailed)
-            }
+            handleCameraResult(
+                success = success,
+                onFailure = {
+                    config.video?.camera?.onFailure?.invoke(
+                        ShadeError.CaptureFailed
+                    )
+                },
+                onResult = config.video?.camera?.onResult
+            )
         }
     }
 
@@ -83,6 +87,48 @@ internal class CameraHandler(
     fun handleVideoCamera() {
         config.video?.camera ?: return
         requireCameraPermission(CameraTarget.VIDEO)
+    }
+
+    private fun launchCamera(
+        prefix: String,
+        extension: String,
+        onFailure: (() -> Unit)?,
+        launcher: ActivityResultLauncher<Uri>
+    ) {
+        val (file, uri) = FileHelper.createTempFile(
+            context,
+            prefix,
+            extension
+        ) ?: run {
+            onFailure?.invoke()
+            return
+        }
+
+        tempCaptureFile = file
+        tempCaptureUri = uri
+
+        launcher.launch(uri)
+    }
+
+    private fun handleCameraResult(
+        success: Boolean,
+        onFailure: (() -> Unit)?,
+        onResult: ((ShadeResult.Captured) -> Unit)?
+    ) {
+        val file = tempCaptureFile
+        val uri = tempCaptureUri
+
+        clearTempState()
+
+        if (!success || file == null || uri == null) {
+            file?.delete()
+            onFailure?.invoke()
+            return
+        }
+
+        onResult?.invoke(
+            ShadeResult.Captured(file, uri)
+        )
     }
 
     private fun requireCameraPermission(target: CameraTarget) {
@@ -102,27 +148,33 @@ internal class CameraHandler(
     }
 
     private fun launchImageCamera() {
-        val (file, uri) = FileHelper.createTempFile(context, "IMG_", ".jpg") ?: run {
-            config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed)
-            return
-        }
-        tempCaptureFile = file
-        tempCaptureUri  = uri
-        registry.imageCameraLauncher.launch(uri)
+        launchCamera(
+            prefix = "IMG_",
+            extension = ".jpg",
+            onFailure = {
+                config.image?.camera?.onFailure?.invoke(
+                    ShadeError.FileCreationFailed
+                )
+            },
+            launcher = registry.imageCameraLauncher
+        )
     }
 
     private fun launchVideoCamera() {
-        val (file, uri) = FileHelper.createTempFile(context, "VID_", ".mp4") ?: run {
-            config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed)
-            return
-        }
-        tempCaptureFile = file
-        tempCaptureUri  = uri
-        registry.videoCameraLauncher.launch(uri)
+        launchCamera(
+            prefix = "VID_",
+            extension = ".mp4",
+            onFailure = {
+                config.video?.camera?.onFailure?.invoke(
+                    ShadeError.FileCreationFailed
+                )
+            },
+            launcher = registry.videoCameraLauncher
+        )
     }
 
     private fun clearTempState() {
         tempCaptureFile = null
-        tempCaptureUri  = null
+        tempCaptureUri = null
     }
 }

@@ -1,6 +1,7 @@
 package com.unitx.shade_core.handler
 
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
@@ -28,67 +29,77 @@ internal class GalleryHandler(
 ) {
 
     init {
-        registry.onMediaPermissionResult = { granted ->
-            if (granted) {
-                launchVideoGallery()
-            } else {
-                val perm  = PermissionHelper.readVideoPermission()
-                val error = if (PermissionHelper.shouldShowRationale(context, perm))
+        registry.onMediaPermissionResult = result@{ granted ->
+            if (!granted) {
+                val permission = PermissionHelper.readVideoPermission()
+
+                val error = if (
+                    PermissionHelper.shouldShowRationale(context, permission)
+                ) {
                     ShadeError.PermissionDenied
-                else
+                } else {
                     ShadeError.PermissionPermanentlyDenied
+                }
+
                 config.video?.gallery?.onFailure?.invoke(error)
+                return@result
             }
+
+            launchVideoGallery()
         }
 
-        registry.onImageGallerySingle = { uri ->
-            if (uri != null) {
-                val file = if (config.image?.gallery?.copyToCache == true)
-                    FileHelper.copyUriToCache(context, uri, "IMG_", ".jpg")
-                else null
-                config.image?.gallery?.onResult?.invoke(ShadeResult.Single(uri, file))
-            } else {
-                config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
-            }
+        registry.onImageGallerySingle = onImageGallerySingle@{ uri ->
+            val gallery = config.image?.gallery ?: return@onImageGallerySingle
+
+            handleSingleGalleryResult(
+                uri = uri,
+                copyToCache = gallery.copyToCache,
+                prefix = "IMG_",
+                extension = ".jpg",
+                onFailure = gallery.onFailure,
+                onResult = gallery.onResult
+            )
         }
 
-        registry.onImageGalleryMulti = { uris ->
-            if (uris.isNotEmpty()) {
-                val items = uris.map { uri ->
-                    val file = if (config.image?.gallery?.copyToCache == true)
-                        FileHelper.copyUriToCache(context, uri, "IMG_", ".jpg")
-                    else null
-                    ShadeResult.ShadeMedia(uri, file)
-                }
-                config.image?.gallery?.onResult?.invoke(ShadeResult.Multiple(items))
-            } else {
-                config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
-            }
+        registry.onVideoGallerySingle = onVideoGallerySingle@{ uri ->
+            val gallery = config.video?.gallery ?: return@onVideoGallerySingle
+
+            handleSingleGalleryResult(
+                uri = uri,
+                copyToCache = gallery.copyToCache,
+                prefix = "VID_",
+                extension = ".mp4",
+                onFailure = gallery.onFailure,
+                onResult = gallery.onResult
+            )
         }
 
-        registry.onVideoGallerySingle = { uri ->
-            if (uri != null) {
-                val file = if (config.video?.gallery?.copyToCache == true)
-                    FileHelper.copyUriToCache(context, uri, "VID_", ".mp4")
-                else null
-                config.video?.gallery?.onResult?.invoke(ShadeResult.Single(uri, file))
-            } else {
-                config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
-            }
+        registry.onImageGalleryMulti = onImageGalleryMulti@{ uris ->
+            val gallery = config.image?.gallery
+                ?: return@onImageGalleryMulti
+
+            handleMultiGalleryResult(
+                uris = uris,
+                copyToCache = gallery.copyToCache,
+                prefix = "IMG_",
+                extension = ".jpg",
+                onFailure = gallery.onFailure,
+                onResult = gallery.onResult
+            )
         }
 
-        registry.onVideoGalleryMulti = { uris ->
-            if (uris.isNotEmpty()) {
-                val items = uris.map { uri ->
-                    val file = if (config.video?.gallery?.copyToCache == true)
-                        FileHelper.copyUriToCache(context, uri, "VID_", ".mp4")
-                    else null
-                    ShadeResult.ShadeMedia(uri, file)
-                }
-                config.video?.gallery?.onResult?.invoke(ShadeResult.Multiple(items))
-            } else {
-                config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
-            }
+        registry.onVideoGalleryMulti = onVideoGalleryMulti@{ uris ->
+            val gallery = config.video?.gallery
+                ?: return@onVideoGalleryMulti
+
+            handleMultiGalleryResult(
+                uris = uris,
+                copyToCache = gallery.copyToCache,
+                prefix = "VID_",
+                extension = ".mp4",
+                onFailure = gallery.onFailure,
+                onResult = gallery.onResult
+            )
         }
     }
 
@@ -110,6 +121,64 @@ internal class GalleryHandler(
             }
         }
         launchVideoGallery()
+    }
+
+    private fun handleSingleGalleryResult(
+        uri: Uri?,
+        copyToCache: Boolean,
+        prefix: String,
+        extension: String,
+        onFailure: ((ShadeError) -> Unit)?,
+        onResult: ((ShadeResult.Single) -> Unit)?
+    ) {
+        if (uri == null) {
+            onFailure?.invoke(ShadeError.PickCancelled)
+            return
+        }
+
+        val file = if (copyToCache) {
+            FileHelper.copyUriToCache(
+                context,
+                uri,
+                prefix,
+                extension
+            )
+        } else null
+
+        onResult?.invoke(
+            ShadeResult.Single(uri, file)
+        )
+    }
+
+    private fun handleMultiGalleryResult(
+        uris: List<Uri>,
+        copyToCache: Boolean,
+        prefix: String,
+        extension: String,
+        onFailure: ((ShadeError) -> Unit)?,
+        onResult: ((ShadeResult.Multiple) -> Unit)?
+    ) {
+        if (uris.isEmpty()) {
+            onFailure?.invoke(ShadeError.PickCancelled)
+            return
+        }
+
+        val items = uris.map { uri ->
+            val file = if (copyToCache) {
+                FileHelper.copyUriToCache(
+                    context,
+                    uri,
+                    prefix,
+                    extension
+                )
+            } else null
+
+            ShadeResult.ShadeMedia(uri, file)
+        }
+
+        onResult?.invoke(
+            ShadeResult.Multiple(items)
+        )
     }
 
     private fun launchVideoGallery() {

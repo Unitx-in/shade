@@ -1,9 +1,11 @@
 package com.unitx.shade_core.compose
 
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.runtime.Composable
@@ -70,172 +72,131 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val captureState = remember { CaptureState() }
     val permCallbacks = remember { PermissionCallbackHolder() }
 
-    // ── Permission launchers ──────────────────────────────────────────────────
+// ── Permission launchers ──────────────────────────────────────────────────
 
-    val cameraPermLauncher: ActivityResultLauncher<String>? =
-        if (config.image?.camera != null || config.video?.camera != null)
-            rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-                permCallbacks.onCamera?.invoke(granted)
-            }
-        else null
+    val cameraPermLauncher =
+        rememberPermissionLauncher(
+            enabled = config.image?.camera != null || config.video?.camera != null,
+            onResult = permCallbacks.onCamera
+        )
 
-    val mediaPermLauncher: ActivityResultLauncher<String>? =
-        if (config.video?.gallery != null)
-            rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-                permCallbacks.onMedia?.invoke(granted)
-            }
-        else null
+    val mediaPermLauncher =
+        rememberPermissionLauncher(
+            enabled = config.video?.gallery != null,
+            onResult = permCallbacks.onMedia
+        )
 
-    // ── Image camera ──────────────────────────────────────────────────────────
+// ── Image camera ──────────────────────────────────────────────────────────
 
     val imageCameraCallback = remember { ShadeResultHolder() }
-    val imageCameraLauncher: ActivityResultLauncher<Uri>? =
-        if (config.image?.camera != null)
-            rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-                val file = captureState.file
-                val uri = captureState.uri
-                captureState.clear()
-                val result: ShadeResult? = if (success && file != null && uri != null)
-                    ShadeResult.Captured(file, uri)
-                else {
-                    file?.delete(); null
-                }
-                imageCameraCallback.invoke(result, ShadeError.CaptureFailed)
-            }
-        else null
 
-    // ── Image gallery single ──────────────────────────────────────────────────
+    val imageCameraLauncher =
+        rememberCaptureLauncher(
+            enabled = config.image?.camera != null,
+            contract = ActivityResultContracts.TakePicture(),
+            captureState = captureState,
+            callback = imageCameraCallback
+        )
+
+// ── Image gallery single ──────────────────────────────────────────────────
 
     val imageGallerySingleCallback = remember { ShadeResultHolder() }
-    val imageGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
-        if (config.image?.gallery != null && config.image?.gallery?.isMultiSelect == false)
-            rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
-                val result: ShadeResult? = uri?.let {
-                    val file = if (config.image?.gallery?.copyToCache == true)
-                        FileHelper.copyUriToCache(context, it, "IMG_", ".jpg")
-                    else null
-                    ShadeResult.Single(it, file)
-                }
-                imageGallerySingleCallback.invoke(result, ShadeError.PickCancelled)
-            }
-        else null
 
-    // ── Image gallery multi ───────────────────────────────────────────────────
+    val imageGallerySingleLauncher =
+        rememberSingleMediaLauncher(
+            enabled = config.image?.gallery?.isMultiSelect == false,
+            copyToCache = config.image?.gallery?.copyToCache == true,
+            prefix = "IMG_",
+            extension = ".jpg",
+            context = context,
+            callback = imageGallerySingleCallback
+        )
+
+// ── Image gallery multi ───────────────────────────────────────────────────
 
     val imageGalleryMultiCallback = remember { ShadeResultHolder() }
-    val imageGalleryMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
-        if (config.image?.gallery?.isMultiSelect == true)
-            rememberLauncherForActivityResult(
-                ActivityResultContracts.PickMultipleVisualMedia(
-                    maxItems = config.image?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
-                )
-            ) { uris ->
-                val items = uris.map { uri ->
-                    val file = if (config.image?.gallery?.copyToCache == true)
-                        FileHelper.copyUriToCache(context, uri, "IMG_", ".jpg")
-                    else null
-                    ShadeResult.ShadeMedia(uri, file)
-                }
-                val result: ShadeResult? = if (items.isNotEmpty()) ShadeResult.Multiple(items) else null
-                imageGalleryMultiCallback.invoke(result, ShadeError.PickCancelled)
-            }
-        else null
 
-    // ── Video camera ──────────────────────────────────────────────────────────
+    val imageGalleryMultiLauncher =
+        rememberMultiMediaLauncher(
+            enabled = config.image?.gallery?.isMultiSelect == true,
+            maxItems = config.image?.gallery?.maxItems ?: 2,
+            copyToCache = config.image?.gallery?.copyToCache == true,
+            prefix = "IMG_",
+            extension = ".jpg",
+            context = context,
+            callback = imageGalleryMultiCallback
+        )
+
+// ── Video camera ──────────────────────────────────────────────────────────
 
     val videoCameraCallback = remember { ShadeResultHolder() }
-    val videoCameraLauncher: ActivityResultLauncher<Uri>? =
-        if (config.video?.camera != null)
-            rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
-                val file = captureState.file
-                val uri = captureState.uri
-                captureState.clear()
-                val result: ShadeResult? = if (success && file != null && uri != null)
-                    ShadeResult.Captured(file, uri)
-                else {
-                    file?.delete(); null
-                }
-                videoCameraCallback.invoke(result, ShadeError.CaptureFailed)
-            }
-        else null
 
-    // ── Video gallery single ──────────────────────────────────────────────────
+    val videoCameraLauncher =
+        rememberCaptureLauncher(
+            enabled = config.video?.camera != null,
+            contract = ActivityResultContracts.CaptureVideo(),
+            captureState = captureState,
+            callback = videoCameraCallback
+        )
+
+// ── Video gallery single ──────────────────────────────────────────────────
 
     val videoGallerySingleCallback = remember { ShadeResultHolder() }
-    val videoGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
-        if (config.video?.gallery != null && config.video?.gallery?.isMultiSelect == false)
-            rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
-                val result: ShadeResult? = uri?.let {
-                    val file = if (config.video?.gallery?.copyToCache == true)
-                        FileHelper.copyUriToCache(context, it, "VID_", ".mp4")
-                    else null
-                    ShadeResult.Single(it, file)
-                }
-                videoGallerySingleCallback.invoke(result, ShadeError.PickCancelled)
-            }
-        else null
 
-    // ── Video gallery multi ───────────────────────────────────────────────────
+    val videoGallerySingleLauncher =
+        rememberSingleMediaLauncher(
+            enabled = config.video?.gallery?.isMultiSelect == false,
+            copyToCache = config.video?.gallery?.copyToCache == true,
+            prefix = "VID_",
+            extension = ".mp4",
+            context = context,
+            callback = videoGallerySingleCallback
+        )
+
+// ── Video gallery multi ───────────────────────────────────────────────────
 
     val videoGalleryMultiCallback = remember { ShadeResultHolder() }
-    val videoGalleryMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
-        if (config.video?.gallery?.isMultiSelect == true)
-            rememberLauncherForActivityResult(
-                ActivityResultContracts.PickMultipleVisualMedia(
-                    maxItems = config.video?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
-                )
-            ) { uris ->
-                val items = uris.map { uri ->
-                    val file = if (config.video?.gallery?.copyToCache == true)
-                        FileHelper.copyUriToCache(context, uri, "VID_", ".mp4")
-                    else null
-                    ShadeResult.ShadeMedia(uri, file)
-                }
-                val result: ShadeResult? = if (items.isNotEmpty()) ShadeResult.Multiple(items) else null
-                videoGalleryMultiCallback.invoke(result, ShadeError.PickCancelled)
-            }
-        else null
 
-    // ── PDF picker ────────────────────────────────────────────────────────────
+    val videoGalleryMultiLauncher =
+        rememberMultiMediaLauncher(
+            enabled = config.video?.gallery?.isMultiSelect == true,
+            maxItems = config.video?.gallery?.maxItems ?: 2,
+            copyToCache = config.video?.gallery?.copyToCache == true,
+            prefix = "VID_",
+            extension = ".mp4",
+            context = context,
+            callback = videoGalleryMultiCallback
+        )
+
+// ── PDF picker ────────────────────────────────────────────────────────────
 
     val pdfCallback = remember { ShadeResultHolder() }
-    val pdfLauncher: ActivityResultLauncher<Array<String>>? =
-        if (config.pdf != null)
-            rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-                val result: ShadeResult? = uri?.let {
-                    val file = FileHelper.copyUriToCache(context, it, "PDF_", ".pdf")
-                    if (file != null) ShadeResult.Single(it, file) else null
-                }
-                val error = if (uri != null && result == null) ShadeError.FileSaveFailed
-                else ShadeError.PickCancelled
-                pdfCallback.invoke(result, error)
-            }
-        else null
 
-    // ── Document picker ───────────────────────────────────────────────────────
+    val pdfLauncher =
+        rememberDocumentLauncher(
+            enabled = config.pdf != null,
+            copyToCache = true,
+            prefix = "PDF_",
+            extensionProvider = { ".pdf" },
+            context = context,
+            callback = pdfCallback
+        )
+
+// ── Document picker ───────────────────────────────────────────────────────
 
     val documentCallback = remember { ShadeResultHolder() }
-    val documentLauncher: ActivityResultLauncher<Array<String>>? =
-        if (config.document != null)
-            rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-                val docConfig = config.document
-                val result: ShadeResult? = uri?.let {
-                    val file = if (docConfig?.copyToCache == true)
-                        FileHelper.copyUriToCache(
-                            context,
-                            it,
-                            "DOC_",
-                            FileHelper.extensionFromUri(context, it)
-                        )
-                    else null
-                    if (docConfig?.copyToCache == true && file == null) null
-                    else ShadeResult.Single(it, file)
-                }
-                val error = if (uri != null && result == null) ShadeError.FileSaveFailed
-                else ShadeError.PickCancelled
-                documentCallback.invoke(result, error)
-            }
-        else null
+
+    val documentLauncher =
+        rememberDocumentLauncher(
+            enabled = config.document != null,
+            copyToCache = config.document?.copyToCache == true,
+            prefix = "DOC_",
+            extensionProvider = {
+                FileHelper.extensionFromUri(context, it)
+            },
+            context = context,
+            callback = documentCallback
+        )
 
     // ── Assemble handlers and build ComposeShadeCore ──────────────────────────
 
@@ -283,3 +244,4 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
         )
     }
 }
+
