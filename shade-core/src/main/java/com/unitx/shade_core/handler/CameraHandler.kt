@@ -6,10 +6,10 @@ import android.net.Uri
 import com.unitx.shade_core.common.CameraTarget
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.PermissionHelper
-import com.unitx.shade_core.config.ShadeConfig
+import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.LauncherRegistry
-import com.unitx.shade_core.result.ShadeError
-import com.unitx.shade_core.result.ShadeResult
+import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeResult
 import java.io.File
 
 /**

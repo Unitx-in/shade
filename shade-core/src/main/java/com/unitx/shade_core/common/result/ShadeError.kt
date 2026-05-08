@@ -1,4 +1,4 @@
-package com.unitx.shade_core.result
+package com.unitx.shade_core.common.result
 
 /**
  * Every failure surface in Shade maps to one of these variants.

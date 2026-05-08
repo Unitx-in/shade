@@ -1,7 +1,7 @@
-package com.unitx.shade_core.config
+package com.unitx.shade_core.common.config
 
 import android.net.Uri
-import com.unitx.shade_core.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeError
 
 class VideoConfig {
     internal var onResult: ((Uri) -> Unit)? = null

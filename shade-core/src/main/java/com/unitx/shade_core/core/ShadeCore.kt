@@ -1,7 +1,7 @@
 package com.unitx.shade_core.core
 
-import com.unitx.shade_core.action.ShadeAction
-import com.unitx.shade_core.config.ShadeConfig
+import com.unitx.shade_core.common.action.ShadeAction
+import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.handler.CameraHandler
 import com.unitx.shade_core.handler.DocumentHandler
 import com.unitx.shade_core.handler.GalleryHandler

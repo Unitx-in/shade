@@ -8,9 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import com.unitx.shade_core.common.PermissionHelper
 import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
-import com.unitx.shade_core.config.ShadeConfig
-import com.unitx.shade_core.result.ShadeError
-import com.unitx.shade_core.result.ShadeResult
+import com.unitx.shade_core.common.config.ShadeConfig
+import com.unitx.shade_core.common.result.ShadeError
 
 /**
  * Compose-side gallery handler.

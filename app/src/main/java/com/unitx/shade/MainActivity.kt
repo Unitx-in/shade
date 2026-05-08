@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.unitx.shade.ui.theme.ShadeTheme
-import com.unitx.shade_core.action.ShadeAction
+import com.unitx.shade_core.common.action.ShadeAction
 import com.unitx.shade_core.compose.rememberShade
 
 class MainActivity : ComponentActivity() {

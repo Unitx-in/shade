@@ -1,4 +1,4 @@
-package com.unitx.shade_core.config
+package com.unitx.shade_core.common.config
 
 /**
  * Root DSL configuration block for Shade.

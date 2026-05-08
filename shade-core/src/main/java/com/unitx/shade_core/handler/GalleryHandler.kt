@@ -5,10 +5,10 @@ import android.os.Build
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import com.unitx.shade_core.common.PermissionHelper
-import com.unitx.shade_core.config.ShadeConfig
+import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.LauncherRegistry
-import com.unitx.shade_core.result.ShadeError
-import com.unitx.shade_core.result.ShadeResult
+import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeResult
 
 /**
  * Handles all gallery-related media flows — image and video picking,

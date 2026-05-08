@@ -3,11 +3,11 @@ package com.unitx.shade_core.handler
 import android.content.Context
 import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.FileHelper
-import com.unitx.shade_core.action.ShadeAction
-import com.unitx.shade_core.config.ShadeConfig
+import com.unitx.shade_core.common.action.ShadeAction
+import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.LauncherRegistry
-import com.unitx.shade_core.result.ShadeError
-import com.unitx.shade_core.result.ShadeResult
+import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeResult
 
 /**
  * Handles PDF and generic document picking flows.

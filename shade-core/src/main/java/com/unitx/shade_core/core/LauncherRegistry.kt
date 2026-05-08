@@ -3,7 +3,7 @@ package com.unitx.shade_core.core
 import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
-import com.unitx.shade_core.config.ShadeConfig
+import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.registrar.ShadeRegistrar
 
 /**

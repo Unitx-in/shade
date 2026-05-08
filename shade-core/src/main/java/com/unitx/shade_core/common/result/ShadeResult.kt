@@ -1,4 +1,4 @@
-package com.unitx.shade_core.result
+package com.unitx.shade_core.common.result
 
 import android.net.Uri
 import java.io.File

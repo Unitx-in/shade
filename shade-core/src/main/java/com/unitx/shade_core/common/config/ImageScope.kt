@@ -1,4 +1,4 @@
-package com.unitx.shade_core.config
+package com.unitx.shade_core.common.config
 
 /**
  * DSL scope for image-related configuration.

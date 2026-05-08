@@ -10,9 +10,9 @@ import com.unitx.shade_core.common.PermissionHelper
 import com.unitx.shade_core.compose.state.CaptureState
 import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
-import com.unitx.shade_core.config.ShadeConfig
-import com.unitx.shade_core.result.ShadeError
-import com.unitx.shade_core.result.ShadeResult
+import com.unitx.shade_core.common.config.ShadeConfig
+import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeResult
 
 /**
  * Compose-side camera handler.
@@ -36,11 +36,13 @@ internal class ComposeCameraHandler(
 
     init {
         // ── Image camera result ───────────────────────────────────────────────
-        imageCameraCallback.onResult  = { config.image?.camera?.onResult?.invoke(it as ShadeResult.Captured) }
+        imageCameraCallback.onResult =
+            { config.image?.camera?.onResult?.invoke(it as ShadeResult.Captured) }
         imageCameraCallback.onFailure = { config.image?.camera?.onFailure?.invoke(it) }
 
         // ── Video camera result ───────────────────────────────────────────────
-        videoCameraCallback.onResult  = { config.video?.camera?.onResult?.invoke(it as ShadeResult.Captured) }
+        videoCameraCallback.onResult =
+            { config.video?.camera?.onResult?.invoke(it as ShadeResult.Captured) }
         videoCameraCallback.onFailure = { config.video?.camera?.onFailure?.invoke(it) }
 
         // ── Camera permission result ──────────────────────────────────────────
@@ -48,10 +50,11 @@ internal class ComposeCameraHandler(
             if (granted) {
                 executeCamera(pendingTarget)
             } else {
-                val error = if (PermissionHelper.shouldShowRationale(context, Manifest.permission.CAMERA))
-                    ShadeError.PermissionDenied
-                else
-                    ShadeError.PermissionPermanentlyDenied
+                val error =
+                    if (PermissionHelper.shouldShowRationale(context, Manifest.permission.CAMERA))
+                        ShadeError.PermissionDenied
+                    else
+                        ShadeError.PermissionPermanentlyDenied
                 when (pendingTarget) {
                     CameraTarget.IMAGE -> config.image?.camera?.onFailure?.invoke(error)
                     CameraTarget.VIDEO -> config.video?.camera?.onFailure?.invoke(error)
@@ -92,7 +95,7 @@ internal class ComposeCameraHandler(
             config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return
         }
         captureState.file = file
-        captureState.uri  = uri
+        captureState.uri = uri
         imageCameraLauncher?.launch(uri)
     }
 
@@ -101,7 +104,7 @@ internal class ComposeCameraHandler(
             config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return
         }
         captureState.file = file
-        captureState.uri  = uri
+        captureState.uri = uri
         videoCameraLauncher?.launch(uri)
     }
 }

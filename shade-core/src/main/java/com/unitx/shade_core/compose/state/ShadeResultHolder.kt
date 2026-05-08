@@ -1,7 +1,7 @@
 package com.unitx.shade_core.compose.state
 
-import com.unitx.shade_core.result.ShadeError
-import com.unitx.shade_core.result.ShadeResult
+import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeResult
 
 /**
  * Holds [ShadeResult]-typed result and failure callbacks.

@@ -1,4 +1,4 @@
-package com.unitx.shade_core.action
+package com.unitx.shade_core.common.action
 
 
 sealed class ShadeAction {

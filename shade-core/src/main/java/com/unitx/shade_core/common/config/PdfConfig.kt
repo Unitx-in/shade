@@ -1,7 +1,7 @@
-package com.unitx.shade_core.config
+package com.unitx.shade_core.common.config
 
-import com.unitx.shade_core.result.ShadeError
-import com.unitx.shade_core.result.ShadeResult
+import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeResult
 
 /**
  * DSL configuration for PDF picking.

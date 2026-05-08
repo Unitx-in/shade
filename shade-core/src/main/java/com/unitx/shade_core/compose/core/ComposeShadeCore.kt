@@ -1,11 +1,11 @@
 package com.unitx.shade_core.compose.core
 
-import com.unitx.shade_core.action.ShadeAction
-import com.unitx.shade_core.compose.NoOpRegistrar
+import com.unitx.shade_core.common.action.ShadeAction
+import com.unitx.shade_core.compose.registrar.NoOpRegistrar
 import com.unitx.shade_core.compose.handler.ComposeCameraHandler
 import com.unitx.shade_core.compose.handler.ComposeDocumentHandler
 import com.unitx.shade_core.compose.handler.ComposeGalleryHandler
-import com.unitx.shade_core.config.ShadeConfig
+import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.ShadeCore
 
 /**

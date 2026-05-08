@@ -1,12 +1,11 @@
 package com.unitx.shade_core.compose.handler
 
 import androidx.activity.result.ActivityResultLauncher
-import com.unitx.shade_core.action.ShadeAction
+import com.unitx.shade_core.common.action.ShadeAction
 import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.compose.state.ShadeResultHolder
-import com.unitx.shade_core.config.ShadeConfig
-import com.unitx.shade_core.result.ShadeError
-import com.unitx.shade_core.result.ShadeResult
+import com.unitx.shade_core.common.config.ShadeConfig
+import com.unitx.shade_core.common.result.ShadeResult
 
 /**
  * Compose-side document handler.
