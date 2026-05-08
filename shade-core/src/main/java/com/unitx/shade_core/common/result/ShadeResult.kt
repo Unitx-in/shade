@@ -47,8 +47,13 @@ sealed class ShadeResult {
      * Multiple media items returned from a multi-select gallery pick.
      */
     data class Multiple(
-        val uris: List<Uri>
+        val items: List<ShadeMedia>
     ) : ShadeResult()
+
+    data class ShadeMedia(
+        val uri: Uri,
+        val file: File? = null  // non-null only when copyToCache = true
+    )
 
     /**
      * An item that was captured by the device camera (image or video).

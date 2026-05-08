@@ -110,7 +110,12 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val imageGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
         if (config.image?.gallery != null && config.image?.gallery?.isMultiSelect == false)
             rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
-                val result: ShadeResult? = uri?.let { ShadeResult.Single(it) }
+                val result: ShadeResult? = uri?.let {
+                    val file = if (config.image?.gallery?.copyToCache == true)
+                        FileHelper.copyUriToCache(context, it, "IMG_", ".jpg")
+                    else null
+                    ShadeResult.Single(it, file)
+                }
                 imageGallerySingleCallback.invoke(result, ShadeError.PickCancelled)
             }
         else null
@@ -125,8 +130,13 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
                     maxItems = config.image?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
                 )
             ) { uris ->
-                val result: ShadeResult? =
-                    if (uris.isNotEmpty()) ShadeResult.Multiple(uris) else null
+                val items = uris.map { uri ->
+                    val file = if (config.image?.gallery?.copyToCache == true)
+                        FileHelper.copyUriToCache(context, uri, "IMG_", ".jpg")
+                    else null
+                    ShadeResult.ShadeMedia(uri, file)
+                }
+                val result: ShadeResult? = if (items.isNotEmpty()) ShadeResult.Multiple(items) else null
                 imageGalleryMultiCallback.invoke(result, ShadeError.PickCancelled)
             }
         else null
@@ -155,7 +165,12 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val videoGallerySingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
         if (config.video?.gallery != null && config.video?.gallery?.isMultiSelect == false)
             rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
-                val result: ShadeResult? = uri?.let { ShadeResult.Single(it) }
+                val result: ShadeResult? = uri?.let {
+                    val file = if (config.video?.gallery?.copyToCache == true)
+                        FileHelper.copyUriToCache(context, it, "VID_", ".mp4")
+                    else null
+                    ShadeResult.Single(it, file)
+                }
                 videoGallerySingleCallback.invoke(result, ShadeError.PickCancelled)
             }
         else null
@@ -170,8 +185,13 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
                     maxItems = config.video?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
                 )
             ) { uris ->
-                val result: ShadeResult? =
-                    if (uris.isNotEmpty()) ShadeResult.Multiple(uris) else null
+                val items = uris.map { uri ->
+                    val file = if (config.video?.gallery?.copyToCache == true)
+                        FileHelper.copyUriToCache(context, uri, "VID_", ".mp4")
+                    else null
+                    ShadeResult.ShadeMedia(uri, file)
+                }
+                val result: ShadeResult? = if (items.isNotEmpty()) ShadeResult.Multiple(items) else null
                 videoGalleryMultiCallback.invoke(result, ShadeError.PickCancelled)
             }
         else null

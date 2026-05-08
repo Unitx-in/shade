@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.PermissionHelper
 import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.LauncherRegistry
@@ -41,31 +42,53 @@ internal class GalleryHandler(
         }
 
         registry.onImageGallerySingle = { uri ->
-            if (uri != null)
-                config.image?.gallery?.onResult?.invoke(ShadeResult.Single(uri))
-            else
+            if (uri != null) {
+                val file = if (config.image?.gallery?.copyToCache == true)
+                    FileHelper.copyUriToCache(context, uri, "IMG_", ".jpg")
+                else null
+                config.image?.gallery?.onResult?.invoke(ShadeResult.Single(uri, file))
+            } else {
                 config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+            }
         }
 
         registry.onImageGalleryMulti = { uris ->
-            if (uris.isNotEmpty())
-                config.image?.gallery?.onResult?.invoke(ShadeResult.Multiple(uris))
-            else
+            if (uris.isNotEmpty()) {
+                val items = uris.map { uri ->
+                    val file = if (config.image?.gallery?.copyToCache == true)
+                        FileHelper.copyUriToCache(context, uri, "IMG_", ".jpg")
+                    else null
+                    ShadeResult.ShadeMedia(uri, file)
+                }
+                config.image?.gallery?.onResult?.invoke(ShadeResult.Multiple(items))
+            } else {
                 config.image?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+            }
         }
 
         registry.onVideoGallerySingle = { uri ->
-            if (uri != null)
-                config.video?.gallery?.onResult?.invoke(ShadeResult.Single(uri))
-            else
+            if (uri != null) {
+                val file = if (config.video?.gallery?.copyToCache == true)
+                    FileHelper.copyUriToCache(context, uri, "VID_", ".mp4")
+                else null
+                config.video?.gallery?.onResult?.invoke(ShadeResult.Single(uri, file))
+            } else {
                 config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+            }
         }
 
         registry.onVideoGalleryMulti = { uris ->
-            if (uris.isNotEmpty())
-                config.video?.gallery?.onResult?.invoke(ShadeResult.Multiple(uris))
-            else
+            if (uris.isNotEmpty()) {
+                val items = uris.map { uri ->
+                    val file = if (config.video?.gallery?.copyToCache == true)
+                        FileHelper.copyUriToCache(context, uri, "VID_", ".mp4")
+                    else null
+                    ShadeResult.ShadeMedia(uri, file)
+                }
+                config.video?.gallery?.onResult?.invoke(ShadeResult.Multiple(items))
+            } else {
                 config.video?.gallery?.onFailure?.invoke(ShadeError.PickCancelled)
+            }
         }
     }
 

@@ -30,6 +30,7 @@ import com.unitx.shade_core.common.result.ShadeResult
 class GalleryConfig {
 
     internal var isMultiSelect: Boolean = false
+    internal var copyToCache: Boolean = false
     internal var maxItems: Int = Int.MAX_VALUE
 
     internal var onResult: ((ShadeResult) -> Unit)? = null
@@ -42,9 +43,14 @@ class GalleryConfig {
      *   Pass [Int.MAX_VALUE] (default) to let the system decide.
      *   Note: the system picker may enforce its own lower cap on older APIs.
      */
-    fun multiSelect(maxItems: Int = Int.MAX_VALUE) {
+    fun multiSelect(maxItems: Int = Int.MAX_VALUE, copyToCache: Boolean = false) {
         isMultiSelect = true
         this.maxItems = maxItems
+        this.copyToCache = copyToCache
+    }
+
+    fun copyToCache(enabled: Boolean = true) {
+        this.copyToCache = enabled
     }
 
     fun onResult(block: (ShadeResult) -> Unit) {
