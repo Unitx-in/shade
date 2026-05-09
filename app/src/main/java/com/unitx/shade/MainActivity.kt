@@ -50,11 +50,6 @@ class MainActivity : ComponentActivity() {
 
                                     }
                                 }
-                                gallery {
-                                    compress {
-
-                                    }
-                                }
                             }
                         }
 

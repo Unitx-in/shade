@@ -16,7 +16,7 @@ internal object FileHelper {
     ): Uri {
         return FileProvider.getUriForFile(
             context,
-            "${context.packageName}.provider",
+            "${context.packageName}.fileprovider",
             file
         )
     }
