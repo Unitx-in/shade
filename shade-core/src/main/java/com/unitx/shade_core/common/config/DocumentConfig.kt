@@ -29,7 +29,7 @@ class DocumentConfig {
      * When true, Shade copies the picked document into [Context.cacheDir]
      * and populates [ShadeResult.Single.file]. Defaults to false.
      */
-    var copyToCache: Boolean = false
+    internal var copyToCache: Boolean = false
 
     internal var onResult: ((ShadeResult.Single) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
@@ -41,4 +41,9 @@ class DocumentConfig {
     fun onFailure(block: (ShadeError) -> Unit) {
         onFailure = block
     }
+
+    fun copyToCache(enabled: Boolean) {
+        copyToCache = enabled
+    }
+
 }

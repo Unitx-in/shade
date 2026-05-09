@@ -11,6 +11,7 @@ import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.result.ShadeError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.unitx.shade_core.compose.core.ComposeShadeCore
 
 /**
  * Compose-side document handler.
@@ -51,9 +52,11 @@ internal class ComposeDocumentHandler(
                     return@launch
                 }
 
+                val finalUri = FileHelper.getUriFromFile(context, file)
+
                 pdfConfig.onResult?.invoke(
                     ShadeResult.Single(
-                        uri = single.uri,
+                        uri = finalUri,
                         file = file
                     )
                 )
@@ -93,9 +96,16 @@ internal class ComposeDocumentHandler(
                     return@launch
                 }
 
+                val finalUri =
+                    if (file != null) {
+                        FileHelper.getUriFromFile(context, file)
+                    } else {
+                        single.uri
+                    }
+
                 documentConfig.onResult?.invoke(
                     ShadeResult.Single(
-                        uri = single.uri,
+                        uri = finalUri,
                         file = file
                     )
                 )
