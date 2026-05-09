@@ -6,6 +6,11 @@ import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.compose.state.ShadeResultHolder
 import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.common.result.ShadeResult
+import android.content.Context
+import com.unitx.shade_core.common.FileHelper
+import com.unitx.shade_core.common.result.ShadeError
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Compose-side document handler.
@@ -14,21 +19,92 @@ import com.unitx.shade_core.common.result.ShadeResult
  * [handlePdf] / [handleDocument] to [ComposeShadeCore].
  */
 internal class ComposeDocumentHandler(
+    private val context: Context,
     private val config: ShadeConfig,
     private val pdfLauncher: ActivityResultLauncher<Array<String>>?,
     private val documentLauncher: ActivityResultLauncher<Array<String>>?,
     pdfCallback: ShadeResultHolder,
     documentCallback: ShadeResultHolder,
+    private val scope: CoroutineScope,
 ) {
 
     init {
-        // ── PDF result ────────────────────────────────────────────────────────
-        pdfCallback.onResult  = { config.pdf?.onResult?.invoke(it as ShadeResult.Single) }
-        pdfCallback.onFailure = { config.pdf?.onFailure?.invoke(it) }
 
-        // ── Document result ───────────────────────────────────────────────────
-        documentCallback.onResult  = { config.document?.onResult?.invoke(it as ShadeResult.Single) }
-        documentCallback.onFailure = { config.document?.onFailure?.invoke(it) }
+        // ── PDF result ─────────────────────────────────────────────────────────
+
+        pdfCallback.onResult = onResult@{ result ->
+
+            val single = result as ShadeResult.Single
+            val pdfConfig = config.pdf ?: return@onResult
+
+            scope.launch {
+
+                val file = FileHelper.copyUriToCache(
+                    context = context,
+                    uri = single.uri,
+                    prefix = "PDF_",
+                    extension = ".pdf"
+                )
+
+                if (file == null) {
+                    pdfConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
+                    return@launch
+                }
+
+                pdfConfig.onResult?.invoke(
+                    ShadeResult.Single(
+                        uri = single.uri,
+                        file = file
+                    )
+                )
+            }
+        }
+
+        pdfCallback.onFailure = {
+            config.pdf?.onFailure?.invoke(it)
+        }
+
+        // ── Document result ────────────────────────────────────────────────────
+
+        documentCallback.onResult = onResult@{ result ->
+
+            val single = result as ShadeResult.Single
+            val documentConfig = config.document ?: return@onResult
+
+            scope.launch {
+
+                val file =
+                    if (documentConfig.copyToCache) {
+
+                        FileHelper.copyUriToCache(
+                            context = context,
+                            uri = single.uri,
+                            prefix = "DOC_",
+                            extension = FileHelper.extensionFromUri(
+                                context,
+                                single.uri
+                            )
+                        )
+
+                    } else null
+
+                if (documentConfig.copyToCache && file == null) {
+                    documentConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
+                    return@launch
+                }
+
+                documentConfig.onResult?.invoke(
+                    ShadeResult.Single(
+                        uri = single.uri,
+                        file = file
+                    )
+                )
+            }
+        }
+
+        documentCallback.onFailure = {
+            config.document?.onFailure?.invoke(it)
+        }
     }
 
     fun handlePdf() {

@@ -10,6 +10,11 @@ import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
 import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.compressor.ImageProcessor
+import com.unitx.shade_core.common.compressor.VideoProcessor
+import com.unitx.shade_core.common.result.ShadeResult
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Compose-side gallery handler.
@@ -30,38 +35,155 @@ internal class ComposeGalleryHandler(
     imageGalleryMultiCallback: ShadeResultHolder,
     videoGallerySingleCallback: ShadeResultHolder,
     videoGalleryMultiCallback: ShadeResultHolder,
+    private val scope: CoroutineScope,
 ) {
 
     init {
-        // ── Image gallery results ─────────────────────────────────────────────
-        imageGallerySingleCallback.onResult  = { config.image?.gallery?.onResult?.invoke(it) }
-        imageGallerySingleCallback.onFailure = { config.image?.gallery?.onFailure?.invoke(it) }
 
-        imageGalleryMultiCallback.onResult  = { config.image?.gallery?.onResult?.invoke(it) }
-        imageGalleryMultiCallback.onFailure = { config.image?.gallery?.onFailure?.invoke(it) }
+        // ── Image single ────────────────────────────────────────────────────────
 
-        // ── Video gallery results ─────────────────────────────────────────────
-        videoGallerySingleCallback.onResult  = { config.video?.gallery?.onResult?.invoke(it) }
-        videoGallerySingleCallback.onFailure = { config.video?.gallery?.onFailure?.invoke(it) }
+        imageGallerySingleCallback.onResult = onResult@{ result ->
 
-        videoGalleryMultiCallback.onResult  = { config.video?.gallery?.onResult?.invoke(it) }
-        videoGalleryMultiCallback.onFailure = { config.video?.gallery?.onFailure?.invoke(it) }
+            val single = result as ShadeResult.Single
+            val gallery = config.image?.gallery ?: return@onResult
 
-        // ── Media permission result ───────────────────────────────────────────
+            scope.launch {
+
+                val processed = ImageProcessor.process(
+                    context = context,
+                    uri = single.uri,
+                    prefix = "IMG_",
+                    extension = ".jpg",
+                    copyToCache = gallery.copyToCache,
+                    compression = gallery.compress
+                )
+
+                gallery.onResult?.invoke(
+                    ShadeResult.Single(
+                        uri = processed.uri,
+                        file = processed.file
+                    )
+                )
+            }
+        }
+
+        imageGallerySingleCallback.onFailure = {
+            config.image?.gallery?.onFailure?.invoke(it)
+        }
+
+        // ── Image multi ─────────────────────────────────────────────────────────
+
+        imageGalleryMultiCallback.onResult = onResult@{ result ->
+
+            val multiple = result as ShadeResult.Multiple
+            val gallery = config.image?.gallery ?: return@onResult
+
+            scope.launch {
+
+                val items = multiple.items.map { media ->
+
+                    ImageProcessor.process(
+                        context = context,
+                        uri = media.uri,
+                        prefix = "IMG_",
+                        extension = ".jpg",
+                        copyToCache = gallery.copyToCache,
+                        compression = gallery.compress
+                    )
+                }
+
+                gallery.onResult?.invoke(
+                    ShadeResult.Multiple(items)
+                )
+            }
+        }
+
+        imageGalleryMultiCallback.onFailure = {
+            config.image?.gallery?.onFailure?.invoke(it)
+        }
+
+        // ── Video single ────────────────────────────────────────────────────────
+
+        videoGallerySingleCallback.onResult = onResult@{ result ->
+
+            val single = result as ShadeResult.Single
+            val gallery = config.video?.gallery ?: return@onResult
+
+            scope.launch {
+
+                val processed = VideoProcessor.process(
+                    context = context,
+                    uri = single.uri,
+                    prefix = "VID_",
+                    extension = ".mp4",
+                    copyToCache = gallery.copyToCache,
+                    compression = gallery.compress
+                )
+
+                gallery.onResult?.invoke(
+                    ShadeResult.Single(
+                        uri = processed.uri,
+                        file = processed.file
+                    )
+                )
+            }
+        }
+
+        videoGallerySingleCallback.onFailure = {
+            config.video?.gallery?.onFailure?.invoke(it)
+        }
+
+        // ── Video multi ─────────────────────────────────────────────────────────
+
+        videoGalleryMultiCallback.onResult = onResult@{ result ->
+
+            val multiple = result as ShadeResult.Multiple
+            val gallery = config.video?.gallery ?: return@onResult
+
+            scope.launch {
+
+                val items = multiple.items.map { media ->
+
+                    VideoProcessor.process(
+                        context = context,
+                        uri = media.uri,
+                        prefix = "VID_",
+                        extension = ".mp4",
+                        copyToCache = gallery.copyToCache,
+                        compression = gallery.compress
+                    )
+                }
+
+                gallery.onResult?.invoke(
+                    ShadeResult.Multiple(items)
+                )
+            }
+        }
+
+        videoGalleryMultiCallback.onFailure = {
+            config.video?.gallery?.onFailure?.invoke(it)
+        }
+
+        // ── Media permission result ────────────────────────────────────────────
+
         permCallbacks.onMedia = { granted ->
+
             if (granted) {
                 launchVideoGallery()
             } else {
-                val perm  = PermissionHelper.readVideoPermission()
-                val error = if (PermissionHelper.shouldShowRationale(context, perm))
-                    ShadeError.PermissionDenied
-                else
-                    ShadeError.PermissionPermanentlyDenied
+
+                val perm = PermissionHelper.readVideoPermission()
+
+                val error =
+                    if (PermissionHelper.shouldShowRationale(context, perm))
+                        ShadeError.PermissionDenied
+                    else
+                        ShadeError.PermissionPermanentlyDenied
+
                 config.video?.gallery?.onFailure?.invoke(error)
             }
         }
     }
-
     fun handleImageGallery() {
         val g = config.image?.gallery ?: return
         if (g.isMultiSelect)

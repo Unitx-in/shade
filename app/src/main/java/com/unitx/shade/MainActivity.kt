@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.unitx.shade.ui.theme.ShadeTheme
 import com.unitx.shade_core.common.action.ShadeAction
+import com.unitx.shade_core.common.config.CompressionConfig
 import com.unitx.shade_core.compose.rememberShade
 
 class MainActivity : ComponentActivity() {
@@ -36,6 +37,12 @@ class MainActivity : ComponentActivity() {
                         val shade = rememberShade {
                             image {
                                 camera {
+                                    compress {
+                                        enabled = true
+                                        quality = 80
+                                        maxWidth = 1024
+                                        maxHeight = 1024
+                                    }
                                     onResult { captured->
                                         Toast.makeText(context, "Image captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
                                     }
@@ -44,7 +51,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 gallery {
+                                    compress {
 
+                                    }
                                 }
                             }
                         }

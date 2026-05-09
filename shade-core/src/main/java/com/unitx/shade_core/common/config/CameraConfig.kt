@@ -19,6 +19,11 @@ import com.unitx.shade_core.common.result.ShadeResult
 class CameraConfig {
     internal var onResult: ((ShadeResult.Captured) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
+    internal var compress: CompressionConfig? = null
+
+    fun compress(block: CompressionConfig.() -> Unit) {
+        compress = CompressionConfig().apply(block)
+    }
 
     fun onResult(block: (ShadeResult.Captured) -> Unit) {
         onResult = block
@@ -27,4 +32,6 @@ class CameraConfig {
     fun onFailure(block: (ShadeError) -> Unit) {
         onFailure = block
     }
+
+
 }

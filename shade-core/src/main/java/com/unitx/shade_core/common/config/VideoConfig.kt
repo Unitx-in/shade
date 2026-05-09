@@ -7,6 +7,12 @@ class VideoConfig {
     internal var onResult: ((Uri) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
 
+    internal var compress: CompressionConfig? = null
+
+    fun compress(block: CompressionConfig.() -> Unit) {
+        compress = CompressionConfig().apply(block)
+    }
+
     fun onResult(block: (Uri) -> Unit) {
         onResult = block
     }

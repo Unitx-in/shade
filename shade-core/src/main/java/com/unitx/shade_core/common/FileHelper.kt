@@ -10,6 +10,17 @@ import java.io.File
 
 internal object FileHelper {
 
+    internal fun getUriFromFile(
+        context: Context,
+        file: File
+    ): Uri {
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            file
+        )
+    }
+
     internal suspend fun createTempFile(
         context: Context,
         prefix: String,

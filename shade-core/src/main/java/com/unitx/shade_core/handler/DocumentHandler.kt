@@ -85,7 +85,19 @@ internal class DocumentHandler(
                 return@launch
             }
 
-            onResult?.invoke(ShadeResult.Single(uri, file))
+            val finalUri =
+                if (file != null) {
+                    FileHelper.getUriFromFile(context, file)
+                } else {
+                    uri
+                }
+
+            onResult?.invoke(
+                ShadeResult.Single(
+                    uri = finalUri,
+                    file = file
+                )
+            )
         }
     }
 

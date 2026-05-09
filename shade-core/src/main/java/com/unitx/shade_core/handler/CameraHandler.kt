@@ -14,6 +14,9 @@ import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
+import com.unitx.shade_core.common.compressor.ImageProcessor
+import com.unitx.shade_core.common.compressor.VideoProcessor
+import com.unitx.shade_core.common.config.CompressionConfig
 
 /**
  * Handles all camera-related media flows — image capture and video recording.
@@ -60,26 +63,98 @@ internal class CameraHandler(
         }
 
         registry.onImageCameraResult = { success ->
-            handleCameraResult(
+
+            handleCaptureResult(
                 success = success,
-                onFailure = {
-                    config.image?.camera?.onFailure?.invoke(
-                        ShadeError.CaptureFailed
+                prefix = "IMG_",
+                extension = ".jpg",
+                compression = config.image?.camera?.compress,
+                processor = { uri, file, prefix, extension, compression ->
+
+                    ImageProcessor.process(
+                        context = context,
+                        uri = uri,
+                        file = file,
+                        prefix = prefix,
+                        extension = extension,
+                        compression = compression
                     )
                 },
+                onFailure = config.image?.camera?.onFailure,
                 onResult = config.image?.camera?.onResult
             )
         }
 
         registry.onVideoCameraResult = { success ->
-            handleCameraResult(
+
+            handleCaptureResult(
                 success = success,
-                onFailure = {
-                    config.video?.camera?.onFailure?.invoke(
-                        ShadeError.CaptureFailed
+                prefix = "VID_",
+                extension = ".mp4",
+                compression = config.video?.camera?.compress,
+                processor = { uri, file, prefix, extension, compression ->
+
+                    VideoProcessor.process(
+                        context = context,
+                        uri = uri,
+                        file = file,
+                        prefix = prefix,
+                        extension = extension,
+                        compression = compression
                     )
                 },
+                onFailure = config.video?.camera?.onFailure,
                 onResult = config.video?.camera?.onResult
+            )
+        }
+    }
+
+    private fun handleCaptureResult(
+        success: Boolean,
+        prefix: String,
+        extension: String,
+        compression: CompressionConfig?,
+        processor: suspend (
+            uri: Uri,
+            file: File?,
+            prefix: String,
+            extension: String,
+            compression: CompressionConfig?
+        ) -> ShadeResult.ShadeMedia,
+        onFailure: ((ShadeError) -> Unit)?,
+        onResult: ((ShadeResult.Captured) -> Unit)?
+    ) {
+
+        val file = tempCaptureFile
+        val uri = tempCaptureUri
+
+        clearTempState()
+
+        if (!success || file == null || uri == null) {
+            file?.delete()
+            onFailure?.invoke(ShadeError.CaptureFailed)
+            return
+        }
+
+        scope.launch {
+
+            val media = processor(
+                uri,
+                file,
+                prefix,
+                extension,
+                compression
+            )
+
+            if (media.file != null && media.file != file) {
+                file.delete()
+            }
+
+            onResult?.invoke(
+                ShadeResult.Captured(
+                    file = media.file ?: file,
+                    uri = media.uri
+                )
             )
         }
     }
@@ -115,27 +190,6 @@ internal class CameraHandler(
 
             launcher.launch(uri)
         }
-    }
-
-    private fun handleCameraResult(
-        success: Boolean,
-        onFailure: (() -> Unit)?,
-        onResult: ((ShadeResult.Captured) -> Unit)?
-    ) {
-        val file = tempCaptureFile
-        val uri = tempCaptureUri
-
-        clearTempState()
-
-        if (!success || file == null || uri == null) {
-            file?.delete()
-            onFailure?.invoke()
-            return
-        }
-
-        onResult?.invoke(
-            ShadeResult.Captured(file, uri)
-        )
     }
 
     private fun requireCameraPermission(target: CameraTarget) {

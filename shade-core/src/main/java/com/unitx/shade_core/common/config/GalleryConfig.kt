@@ -31,10 +31,15 @@ class GalleryConfig {
 
     internal var isMultiSelect: Boolean = false
     internal var copyToCache: Boolean = false
+    internal var compress: CompressionConfig? = null
     internal var maxItems: Int = Int.MAX_VALUE
 
     internal var onResult: ((ShadeResult) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
+
+    fun compress(block: CompressionConfig.() -> Unit) {
+        compress = CompressionConfig().apply(block)
+    }
 
     /**
      * Enable multi-select mode.

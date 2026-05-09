@@ -63,12 +63,7 @@ internal fun rememberCaptureLauncher(
 @Composable
 internal fun rememberSingleMediaLauncher(
     enabled: Boolean,
-    copyToCache: Boolean,
-    prefix: String,
-    extension: String,
-    context: Context,
-    callback: ShadeResultHolder,
-    scope: CoroutineScope
+    callback: ShadeResultHolder
 ): ActivityResultLauncher<PickVisualMediaRequest>? {
 
     if (!enabled) return null
@@ -77,35 +72,22 @@ internal fun rememberSingleMediaLauncher(
         PickVisualMedia()
     ) { uri ->
 
-        scope.launch {
-
-            val result = uri?.let {
-                val file = if (copyToCache) {
-                    FileHelper.copyUriToCache(
-                        context,
-                        it,
-                        prefix,
-                        extension
-                    )
-                } else null
-
-                ShadeResult.Single(it, file)
+        val result =
+            uri?.let {
+                ShadeResult.Single(
+                    uri = it,
+                    file = null
+                )
             }
 
-            callback.invoke(result, ShadeError.PickCancelled)
-        }
+        callback.invoke(result, ShadeError.PickCancelled)
     }
 }
 @Composable
 internal fun rememberMultiMediaLauncher(
     enabled: Boolean,
     maxItems: Int,
-    copyToCache: Boolean,
-    prefix: String,
-    extension: String,
-    context: Context,
-    callback: ShadeResultHolder,
-    scope: CoroutineScope
+    callback: ShadeResultHolder
 ): ActivityResultLauncher<PickVisualMediaRequest>? {
 
     if (!enabled) return null
@@ -116,40 +98,28 @@ internal fun rememberMultiMediaLauncher(
         )
     ) { uris ->
 
-        scope.launch {
+        val result =
+            if (uris.isNotEmpty()) {
 
-            val items = uris.map { uri ->
-                val file = if (copyToCache) {
-                    FileHelper.copyUriToCache(
-                        context,
-                        uri,
-                        prefix,
-                        extension
-                    )
-                } else null
+                ShadeResult.Multiple(
+                    uris.map { uri ->
+                        ShadeResult.ShadeMedia(
+                            uri = uri,
+                            file = null
+                        )
+                    }
+                )
 
-                ShadeResult.ShadeMedia(uri, file)
-            }
+            } else null
 
-            val result =
-                if (items.isNotEmpty()) {
-                    ShadeResult.Multiple(items)
-                } else null
-
-            callback.invoke(result, ShadeError.PickCancelled)
-        }
+        callback.invoke(result, ShadeError.PickCancelled)
     }
 }
 
 @Composable
 internal fun rememberDocumentLauncher(
     enabled: Boolean,
-    copyToCache: Boolean,
-    prefix: String,
-    extensionProvider: (Uri) -> String,
-    context: Context,
-    callback: ShadeResultHolder,
-    scope: CoroutineScope
+    callback: ShadeResultHolder
 ): ActivityResultLauncher<Array<String>>? {
 
     if (!enabled) return null
@@ -158,33 +128,14 @@ internal fun rememberDocumentLauncher(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
 
-        scope.launch {
-
-            val result = uri?.let {
-                val file = if (copyToCache) {
-                    FileHelper.copyUriToCache(
-                        context,
-                        it,
-                        prefix,
-                        extensionProvider(it)
-                    )
-                } else null
-
-                if (copyToCache && file == null) {
-                    null
-                } else {
-                    ShadeResult.Single(it, file)
-                }
+        val result =
+            uri?.let {
+                ShadeResult.Single(
+                    uri = it,
+                    file = null
+                )
             }
 
-            val error =
-                if (uri != null && result == null) {
-                    ShadeError.FileSaveFailed
-                } else {
-                    ShadeError.PickCancelled
-                }
-
-            callback.invoke(result, error)
-        }
+        callback.invoke(result, ShadeError.PickCancelled)
     }
 }

@@ -68,14 +68,12 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
 
 // ── Permission launchers ──────────────────────────────────────────────────
 
-    val cameraPermLauncher =
-        rememberPermissionLauncher(
+    val cameraPermLauncher = rememberPermissionLauncher(
             enabled = config.image?.camera != null || config.video?.camera != null,
             onResult = permCallbacks.onCamera
         )
 
-    val mediaPermLauncher =
-        rememberPermissionLauncher(
+    val mediaPermLauncher = rememberPermissionLauncher(
             enabled = config.video?.gallery != null,
             onResult = permCallbacks.onMedia
         )
@@ -99,28 +97,17 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val imageGallerySingleLauncher =
         rememberSingleMediaLauncher(
             enabled = config.image?.gallery?.isMultiSelect == false,
-            copyToCache = config.image?.gallery?.copyToCache == true,
-            prefix = "IMG_",
-            extension = ".jpg",
-            context = context,
             callback = imageGallerySingleCallback,
-            scope = scope
         )
 
 // ── Image gallery multi ───────────────────────────────────────────────────
 
     val imageGalleryMultiCallback = remember { ShadeResultHolder() }
 
-    val imageGalleryMultiLauncher =
-        rememberMultiMediaLauncher(
+    val imageGalleryMultiLauncher = rememberMultiMediaLauncher(
             enabled = config.image?.gallery?.isMultiSelect == true,
             maxItems = config.image?.gallery?.maxItems ?: 2,
-            copyToCache = config.image?.gallery?.copyToCache == true,
-            prefix = "IMG_",
-            extension = ".jpg",
-            context = context,
             callback = imageGalleryMultiCallback,
-            scope = scope
         )
 
 // ── Video camera ──────────────────────────────────────────────────────────
@@ -139,63 +126,37 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
 
     val videoGallerySingleCallback = remember { ShadeResultHolder() }
 
-    val videoGallerySingleLauncher =
-        rememberSingleMediaLauncher(
+    val videoGallerySingleLauncher = rememberSingleMediaLauncher(
             enabled = config.video?.gallery?.isMultiSelect == false,
-            copyToCache = config.video?.gallery?.copyToCache == true,
-            prefix = "VID_",
-            extension = ".mp4",
-            context = context,
             callback = videoGallerySingleCallback,
-            scope = scope
         )
 
 // ── Video gallery multi ───────────────────────────────────────────────────
 
     val videoGalleryMultiCallback = remember { ShadeResultHolder() }
 
-    val videoGalleryMultiLauncher =
-        rememberMultiMediaLauncher(
+    val videoGalleryMultiLauncher = rememberMultiMediaLauncher(
             enabled = config.video?.gallery?.isMultiSelect == true,
             maxItems = config.video?.gallery?.maxItems ?: 2,
-            copyToCache = config.video?.gallery?.copyToCache == true,
-            prefix = "VID_",
-            extension = ".mp4",
-            context = context,
             callback = videoGalleryMultiCallback,
-            scope = scope
         )
 
 // ── PDF picker ────────────────────────────────────────────────────────────
 
     val pdfCallback = remember { ShadeResultHolder() }
 
-    val pdfLauncher =
-        rememberDocumentLauncher(
+    val pdfLauncher = rememberDocumentLauncher(
             enabled = config.pdf != null,
-            copyToCache = true,
-            prefix = "PDF_",
-            extensionProvider = { ".pdf" },
-            context = context,
             callback = pdfCallback,
-            scope = scope
         )
 
 // ── Document picker ───────────────────────────────────────────────────────
 
     val documentCallback = remember { ShadeResultHolder() }
 
-    val documentLauncher =
-        rememberDocumentLauncher(
+    val documentLauncher = rememberDocumentLauncher(
             enabled = config.document != null,
-            copyToCache = config.document?.copyToCache == true,
-            prefix = "DOC_",
-            extensionProvider = {
-                FileHelper.extensionFromUri(context, it)
-            },
-            context = context,
             callback = documentCallback,
-            scope = scope
         )
 
     // ── Assemble handlers and build ComposeShadeCore ──────────────────────────
@@ -227,14 +188,17 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
             imageGalleryMultiCallback = imageGalleryMultiCallback,
             videoGallerySingleCallback = videoGallerySingleCallback,
             videoGalleryMultiCallback = videoGalleryMultiCallback,
+            scope = scope
         )
 
         val documentHandler = ComposeDocumentHandler(
+            context = context,
             config = config,
             pdfLauncher = pdfLauncher,
             documentLauncher = documentLauncher,
             pdfCallback = pdfCallback,
             documentCallback = documentCallback,
+            scope = scope
         )
 
         ComposeShadeCore(

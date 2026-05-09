@@ -6,7 +6,9 @@ import android.net.Uri
 import androidx.activity.result.ActivityResultLauncher
 import com.unitx.shade_core.common.CameraTarget
 import com.unitx.shade_core.common.FileHelper
+import com.unitx.shade_core.common.compressor.ImageProcessor
 import com.unitx.shade_core.common.PermissionHelper
+import com.unitx.shade_core.common.compressor.VideoProcessor
 import com.unitx.shade_core.compose.state.CaptureState
 import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
@@ -26,26 +28,72 @@ internal class ComposeCameraHandler(
     private val context: Context,
     private val config: ShadeConfig,
     private val captureState: CaptureState,
-    private val permCallbacks: PermissionCallbackHolder,
     private val cameraPermLauncher: ActivityResultLauncher<String>?,
     private val imageCameraLauncher: ActivityResultLauncher<Uri>?,
     private val videoCameraLauncher: ActivityResultLauncher<Uri>?,
+    private val scope: CoroutineScope,
     imageCameraCallback: ShadeResultHolder,
     videoCameraCallback: ShadeResultHolder,
-    private val scope: CoroutineScope,
+    permCallbacks: PermissionCallbackHolder,
 ) {
 
     var pendingTarget: CameraTarget = CameraTarget.IMAGE
 
     init {
         // ── Image camera result ───────────────────────────────────────────────
-        imageCameraCallback.onResult =
-            { config.image?.camera?.onResult?.invoke(it as ShadeResult.Captured) }
+        imageCameraCallback.onResult = onResult@{ result ->
+
+            val captured = result as ShadeResult.Captured
+            val cameraConfig = config.image?.camera ?: return@onResult
+
+            scope.launch {
+
+                val processed = ImageProcessor.process(
+                    context = context,
+                    uri = captured.uri,
+                    file = captureState.file,
+                    prefix = "IMG_",
+                    extension = ".jpg",
+                    compression = cameraConfig.compress
+                )
+
+                cameraConfig.onResult?.invoke(
+                    ShadeResult.Captured(
+                        file = processed.file!!,
+                        uri = processed.uri
+                    )
+                )
+            }
+        }
+
         imageCameraCallback.onFailure = { config.image?.camera?.onFailure?.invoke(it) }
 
         // ── Video camera result ───────────────────────────────────────────────
-        videoCameraCallback.onResult =
-            { config.video?.camera?.onResult?.invoke(it as ShadeResult.Captured) }
+        videoCameraCallback.onResult = onResult@{ result ->
+
+            val captured = result as ShadeResult.Captured
+            val cameraConfig = config.video?.camera ?: return@onResult
+
+            scope.launch {
+
+                val processed = VideoProcessor.process(
+                    context = context,
+                    uri = captured.uri,
+                    file = captureState.file,
+                    prefix = "VID_",
+                    extension = ".mp4",
+                    compression = cameraConfig.compress
+                )
+
+                cameraConfig.onResult?.invoke(
+                    ShadeResult.Captured(
+                        file = processed.file!!,
+                        uri = processed.uri
+                    )
+                )
+            }
+        }
+
         videoCameraCallback.onFailure = { config.video?.camera?.onFailure?.invoke(it) }
 
         // ── Camera permission result ──────────────────────────────────────────

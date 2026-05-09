@@ -13,6 +13,10 @@ import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.unitx.shade_core.common.compressor.ImageProcessor
+import com.unitx.shade_core.common.compressor.VideoProcessor
+import com.unitx.shade_core.common.config.CompressionConfig
+import java.io.File
 
 /**
  * Handles all gallery-related media flows — image and video picking,
@@ -30,70 +34,130 @@ internal class GalleryHandler(
     private val registry: LauncherRegistry,
     private val scope: CoroutineScope
 ) {
-
     init {
-        registry.onMediaPermissionResult = result@{ granted->
-            if (!granted){
+
+        registry.onMediaPermissionResult = result@{ granted ->
+
+            if (!granted) {
+
                 val permission = PermissionHelper.readVideoPermission()
 
-                val error = if (PermissionHelper.shouldShowRationale(context, permission)) ShadeError.PermissionDenied
-                else ShadeError.PermissionPermanentlyDenied
+                val error =
+                    if (PermissionHelper.shouldShowRationale(context, permission))
+                        ShadeError.PermissionDenied
+                    else
+                        ShadeError.PermissionPermanentlyDenied
 
                 config.video?.gallery?.onFailure?.invoke(error)
                 return@result
             }
+
             launchVideoGallery()
         }
 
         registry.onImageGallerySingle = onImageGallerySingle@{ uri ->
-            val gallery = config.image?.gallery ?: return@onImageGallerySingle
+
+            val gallery = config.image?.gallery
+                ?: return@onImageGallerySingle
 
             handleSingleGalleryResult(
                 uri = uri,
-                copyToCache = gallery.copyToCache,
                 prefix = "IMG_",
                 extension = ".jpg",
+                copyToCache = gallery.copyToCache,
+                processor = { pickedUri, pref, ext, copyToCache, compression ->
+
+                    ImageProcessor.process(
+                        context = context,
+                        uri = pickedUri,
+                        prefix = pref,
+                        extension = ext,
+                        copyToCache = copyToCache,
+                        compression = compression
+                    )
+                },
+                compression = gallery.compress,
                 onFailure = gallery.onFailure,
                 onResult = gallery.onResult
             )
         }
 
         registry.onVideoGallerySingle = onVideoGallerySingle@{ uri ->
-            val gallery = config.video?.gallery ?: return@onVideoGallerySingle
+
+            val gallery = config.video?.gallery
+                ?: return@onVideoGallerySingle
 
             handleSingleGalleryResult(
                 uri = uri,
-                copyToCache = gallery.copyToCache,
                 prefix = "VID_",
                 extension = ".mp4",
+                copyToCache = gallery.copyToCache,
+                processor = { pickedUri, pref, ext, copyToCache, compression ->
+
+                    VideoProcessor.process(
+                        context = context,
+                        uri = pickedUri,
+                        prefix = pref,
+                        extension = ext,
+                        copyToCache = copyToCache,
+                        compression = compression
+                    )
+                },
+                compression = gallery.compress,
                 onFailure = gallery.onFailure,
                 onResult = gallery.onResult
             )
         }
 
         registry.onImageGalleryMulti = onImageGalleryMulti@{ uris ->
+
             val gallery = config.image?.gallery
                 ?: return@onImageGalleryMulti
 
             handleMultiGalleryResult(
                 uris = uris,
-                copyToCache = gallery.copyToCache,
                 prefix = "IMG_",
                 extension = ".jpg",
+                copyToCache = gallery.copyToCache,
+                processor = { pickedUri, pref, ext, copyToCache, compression ->
+
+                    ImageProcessor.process(
+                        context = context,
+                        uri = pickedUri,
+                        prefix = pref,
+                        extension = ext,
+                        copyToCache = copyToCache,
+                        compression = compression
+                    )
+                },
+                compression = gallery.compress,
                 onFailure = gallery.onFailure,
                 onResult = gallery.onResult
             )
         }
 
         registry.onVideoGalleryMulti = onVideoGalleryMulti@{ uris ->
+
             val gallery = config.video?.gallery
                 ?: return@onVideoGalleryMulti
 
             handleMultiGalleryResult(
                 uris = uris,
-                copyToCache = gallery.copyToCache,
                 prefix = "VID_",
                 extension = ".mp4",
+                copyToCache = gallery.copyToCache,
+                processor = { pickedUri, pref, ext, copyToCache, compression ->
+
+                    VideoProcessor.process(
+                        context = context,
+                        uri = pickedUri,
+                        prefix = pref,
+                        extension = ext,
+                        copyToCache = copyToCache,
+                        compression = compression
+                    )
+                },
+                compression = gallery.compress,
                 onFailure = gallery.onFailure,
                 onResult = gallery.onResult
             )
@@ -122,47 +186,71 @@ internal class GalleryHandler(
 
     private fun handleSingleGalleryResult(
         uri: Uri?,
-        copyToCache: Boolean,
         prefix: String,
         extension: String,
+        copyToCache: Boolean,
+        processor: suspend (
+            uri: Uri,
+            prefix: String,
+            extension: String,
+            copyToCache: Boolean,
+            compression: CompressionConfig?
+        ) -> ShadeResult.ShadeMedia,
+        compression: CompressionConfig?,
         onFailure: ((ShadeError) -> Unit)?,
         onResult: ((ShadeResult.Single) -> Unit)?
     ) {
         scope.launch {
+
             if (uri == null) {
                 onFailure?.invoke(ShadeError.PickCancelled)
                 return@launch
             }
 
-            val file = if (copyToCache) {
-                FileHelper.copyUriToCache(
-                    context,
-                    uri,
-                    prefix,
-                    extension
-                )
-            } else null
+            val media = processor(
+                uri,
+                prefix,
+                extension,
+                copyToCache,
+                compression
+            )
 
-            if (copyToCache && file == null) {
-                onFailure?.invoke(ShadeError.FileSaveFailed)
+            if (compression?.enabled == true && media.file == null) {
+
+                onFailure?.invoke(
+                    ShadeError.CompressionFailed
+                )
+
                 return@launch
             }
 
             onResult?.invoke(
-                ShadeResult.Single(uri, file)
+                ShadeResult.Single(
+                    uri = media.uri,
+                    file = media.file
+                )
             )
         }
     }
 
     private fun handleMultiGalleryResult(
         uris: List<Uri>,
-        copyToCache: Boolean,
         prefix: String,
         extension: String,
+        copyToCache: Boolean,
+        processor: suspend (
+            uri: Uri,
+            prefix: String,
+            extension: String,
+            copyToCache: Boolean,
+            compression: CompressionConfig?
+        ) -> ShadeResult.ShadeMedia,
+        compression: CompressionConfig?,
         onFailure: ((ShadeError) -> Unit)?,
         onResult: ((ShadeResult.Multiple) -> Unit)?
     ) {
         scope.launch {
+
             if (uris.isEmpty()) {
                 onFailure?.invoke(ShadeError.PickCancelled)
                 return@launch
@@ -172,21 +260,24 @@ internal class GalleryHandler(
 
             for (uri in uris) {
 
-                val file = if (copyToCache) {
-                    FileHelper.copyUriToCache(
-                        context,
-                        uri,
-                        prefix,
-                        extension
-                    )
-                } else null
+                val media = processor(
+                    uri,
+                    prefix,
+                    extension,
+                    copyToCache,
+                    compression
+                )
 
-                if (copyToCache && file == null) {
-                    onFailure?.invoke(ShadeError.FileSaveFailed)
+                if (compression?.enabled == true && media.file == null) {
+
+                    onFailure?.invoke(
+                        ShadeError.CompressionFailed
+                    )
+
                     return@launch
                 }
 
-                items += ShadeResult.ShadeMedia(uri, file)
+                items += media
             }
 
             onResult?.invoke(
