@@ -28,7 +28,7 @@ internal object FileHelper {
                         "Add the following to your AndroidManifest.xml inside <application>:\n\n" +
                         "<provider\n" +
                         "    android:name=\"androidx.core.content.FileProvider\"\n" +
-                        "    android:authorities=\"\${applicationId}.provider\"\n" +
+                        $$"    android:authorities=\"${applicationId}.provider\"\n" +
                         "    android:exported=\"false\"\n" +
                         "    android:grantUriPermissions=\"true\">\n" +
                         "    <meta-data\n" +
@@ -54,7 +54,7 @@ internal object FileHelper {
                 throw e
             } catch (e: IllegalStateException) {
                 throw e
-            }  catch (e: Exception){
+            }  catch (_: Exception){
                 null
             }
         }
@@ -81,12 +81,12 @@ internal object FileHelper {
         val mime = context.contentResolver.getType(uri) ?: return ".bin"
         return when {
             mime.contains("pdf") -> ".pdf"
-            mime.contains("msword") -> ".doc"
+            mime.contains("word") -> ".doc"
             mime.contains("wordprocess") -> ".docx"
             mime.contains("ms-excel") -> ".xls"
             mime.contains("spreadsheet") -> ".xlsx"
             mime.contains("powerpoint") -> ".ppt"
-            mime.contains("presentati") -> ".pptx"
+            mime.contains("presentation") -> ".pptx"
             mime.contains("text/plain") -> ".txt"
             mime.contains("text/csv") -> ".csv"
             mime.contains("rtf") -> ".rtf"
