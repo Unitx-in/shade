@@ -1,15 +1,10 @@
 package com.unitx.shade_core.compose
 
-import android.content.Context
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.compose.core.ComposeShadeCore
@@ -21,8 +16,6 @@ import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
 import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.ShadeCore
-import com.unitx.shade_core.common.result.ShadeError
-import com.unitx.shade_core.common.result.ShadeResult
 
 /**
  * Composable hook that creates and remembers a [ShadeCore] instance.
@@ -71,6 +64,7 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val config = remember { ShadeConfig().apply(block) }
     val captureState = remember { CaptureState() }
     val permCallbacks = remember { PermissionCallbackHolder() }
+    val scope = rememberCoroutineScope()
 
 // ── Permission launchers ──────────────────────────────────────────────────
 
@@ -109,7 +103,8 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
             prefix = "IMG_",
             extension = ".jpg",
             context = context,
-            callback = imageGallerySingleCallback
+            callback = imageGallerySingleCallback,
+            scope = scope
         )
 
 // ── Image gallery multi ───────────────────────────────────────────────────
@@ -124,7 +119,8 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
             prefix = "IMG_",
             extension = ".jpg",
             context = context,
-            callback = imageGalleryMultiCallback
+            callback = imageGalleryMultiCallback,
+            scope = scope
         )
 
 // ── Video camera ──────────────────────────────────────────────────────────
@@ -150,7 +146,8 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
             prefix = "VID_",
             extension = ".mp4",
             context = context,
-            callback = videoGallerySingleCallback
+            callback = videoGallerySingleCallback,
+            scope = scope
         )
 
 // ── Video gallery multi ───────────────────────────────────────────────────
@@ -165,7 +162,8 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
             prefix = "VID_",
             extension = ".mp4",
             context = context,
-            callback = videoGalleryMultiCallback
+            callback = videoGalleryMultiCallback,
+            scope = scope
         )
 
 // ── PDF picker ────────────────────────────────────────────────────────────
@@ -179,7 +177,8 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
             prefix = "PDF_",
             extensionProvider = { ".pdf" },
             context = context,
-            callback = pdfCallback
+            callback = pdfCallback,
+            scope = scope
         )
 
 // ── Document picker ───────────────────────────────────────────────────────
@@ -195,7 +194,8 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
                 FileHelper.extensionFromUri(context, it)
             },
             context = context,
-            callback = documentCallback
+            callback = documentCallback,
+            scope = scope
         )
 
     // ── Assemble handlers and build ComposeShadeCore ──────────────────────────
@@ -211,6 +211,7 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
             videoCameraLauncher = videoCameraLauncher,
             imageCameraCallback = imageCameraCallback,
             videoCameraCallback = videoCameraCallback,
+            scope = scope
         )
 
         val galleryHandler = ComposeGalleryHandler(

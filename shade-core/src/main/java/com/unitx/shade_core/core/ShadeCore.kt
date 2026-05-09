@@ -6,66 +6,74 @@ import com.unitx.shade_core.handler.CameraHandler
 import com.unitx.shade_core.handler.DocumentHandler
 import com.unitx.shade_core.handler.GalleryHandler
 import com.unitx.shade_core.registrar.ShadeRegistrar
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 /**
  * Core engine. Do not instantiate directly — use [Shade.with] (XML / Activity)
  * or [rememberShade] (Compose).
  *
- * [ShadeCore] owns nothing except routing. All media logic lives in:
- * - [CameraHandler]  — camera permission, temp file state, image/video capture
- * - [GalleryHandler] — image/video gallery picking, media permission
- * - [DocumentHandler] — PDF and document picking, cache copy
+ * Owns a [CoroutineScope] backed by [SupervisorJob] + [Dispatchers.Main].
+ * IO-heavy operations (cache copy in [GalleryHandler] and [DocumentHandler])
+ * are dispatched to [Dispatchers.IO] via this scope and results are
+ * delivered back on [Dispatchers.Main].
  *
- * Launchers are registered via [LauncherRegistry] which delegates to
- * [ShadeRegistrar], keeping [ShadeCore] free of any Fragment/Activity import.
+ * Call [cancel] when the host is destroyed to clean up any in-flight work.
  */
 open class ShadeCore(
     private val registrar: ShadeRegistrar,
     private val config: ShadeConfig
 ) {
 
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val registry = LauncherRegistry(registrar, config)
 
     private lateinit var cameraHandler: CameraHandler
-    private lateinit var galleryHandler : GalleryHandler
-    private lateinit var documentHandler : DocumentHandler
+    private lateinit var galleryHandler: GalleryHandler
+    private lateinit var documentHandler: DocumentHandler
 
     init {
-        implementHandlers()
-        registerLaunchers()
+        initComponents()
     }
 
-    open fun implementHandlers(){
+    private fun attachLifecycleCleanup() {
+        registrar.lifecycleCleanup(scope)
+    }
+
+    private fun implementHandlers() {
         val context = registrar.context
-        cameraHandler = CameraHandler(context, config, registry)
-        galleryHandler = GalleryHandler(context, config, registry)
-        documentHandler = DocumentHandler(context, config, registry)
+        cameraHandler   = CameraHandler(context, config, registry, scope)
+        galleryHandler  = GalleryHandler(context, config, registry, scope)
+        documentHandler = DocumentHandler(context, config, registry, scope)
     }
 
-    open fun registerLaunchers() {
+    private fun registerLaunchers() {
         registry.registerAll()
     }
 
     /**
-     * Dispatch a [ShadeAction]. Call this from click handlers or Compose
-     * event callbacks.
+     * Dispatch a [ShadeAction]. Call this from click handlers.
      *
      * ```kotlin
-     * // XML / Activity
      * binding.btnCamera.setOnClickListener { shade.launch(ShadeAction.Image.Camera) }
-     *
-     * // Compose
-     * Button(onClick = { shade.launch(ShadeAction.Image.Camera) }) { Text("Camera") }
      * ```
      */
     open fun launch(action: ShadeAction) {
         when (action) {
-            is ShadeAction.Image.Camera -> cameraHandler.handleImageCamera()
+            is ShadeAction.Image.Camera  -> cameraHandler.handleImageCamera()
             is ShadeAction.Image.Gallery -> galleryHandler.handleImageGallery()
-            is ShadeAction.Video.Camera -> cameraHandler.handleVideoCamera()
+            is ShadeAction.Video.Camera  -> cameraHandler.handleVideoCamera()
             is ShadeAction.Video.Gallery -> galleryHandler.handleVideoGallery()
-            is ShadeAction.Pdf -> documentHandler.handlePdf()
-            is ShadeAction.Document -> documentHandler.handleDocument(action)
+            is ShadeAction.Pdf           -> documentHandler.handlePdf()
+            is ShadeAction.Document      -> documentHandler.handleDocument(action)
         }
+    }
+
+    open fun initComponents() {
+        implementHandlers()
+        registerLaunchers()
+        attachLifecycleCleanup()
     }
 }

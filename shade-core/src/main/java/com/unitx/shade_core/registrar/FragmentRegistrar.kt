@@ -4,6 +4,10 @@ import android.content.Context
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 
 /**
  * [ShadeRegistrar] implementation for XML / Fragment-based screens.
@@ -24,4 +28,12 @@ internal class FragmentRegistrar(private val fragment: Fragment) : ShadeRegistra
 
     override fun shouldShowRationale(permission: String): Boolean =
         fragment.shouldShowRequestPermissionRationale(permission)
+
+    override fun lifecycleCleanup(scope: CoroutineScope) {
+        fragment.viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                scope.cancel()
+            }
+        })
+    }
 }

@@ -5,6 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 
 /**
  * [ShadeRegistrar] implementation for [ComponentActivity]-based hosts
@@ -24,4 +28,12 @@ internal class ActivityRegistrar(private val activity: ComponentActivity) : Shad
 
     override fun shouldShowRationale(permission: String): Boolean =
         ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+
+    override fun lifecycleCleanup(scope: CoroutineScope) {
+        activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                scope.cancel()
+            }
+        })
+    }
 }

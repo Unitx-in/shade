@@ -11,6 +11,8 @@ import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.LauncherRegistry
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.io.File
 
 /**
@@ -24,7 +26,8 @@ import java.io.File
 internal class CameraHandler(
     private val context: Context,
     private val config: ShadeConfig,
-    private val registry: LauncherRegistry
+    private val registry: LauncherRegistry,
+    private val scope: CoroutineScope
 ) {
 
     private var pendingTarget: CameraTarget = CameraTarget.IMAGE
@@ -49,6 +52,8 @@ internal class CameraHandler(
                 pendingTarget = CameraTarget.IMAGE
                 return@result
             }
+
+
 
             executeCamera(pendingTarget)
             pendingTarget = CameraTarget.IMAGE
@@ -95,19 +100,21 @@ internal class CameraHandler(
         onFailure: (() -> Unit)?,
         launcher: ActivityResultLauncher<Uri>
     ) {
-        val (file, uri) = FileHelper.createTempFile(
-            context,
-            prefix,
-            extension
-        ) ?: run {
-            onFailure?.invoke()
-            return
+        scope.launch {
+            val (file, uri) = FileHelper.createTempFile(
+                context,
+                prefix,
+                extension
+            ) ?: run {
+                onFailure?.invoke()
+                return@launch
+            }
+
+            tempCaptureFile = file
+            tempCaptureUri = uri
+
+            launcher.launch(uri)
         }
-
-        tempCaptureFile = file
-        tempCaptureUri = uri
-
-        launcher.launch(uri)
     }
 
     private fun handleCameraResult(

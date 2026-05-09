@@ -43,6 +43,9 @@ class MainActivity : ComponentActivity() {
 
                                     }
                                 }
+                                gallery {
+
+                                }
                             }
                         }
 

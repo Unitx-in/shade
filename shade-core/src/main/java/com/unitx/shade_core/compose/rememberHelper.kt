@@ -14,6 +14,8 @@ import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 import com.unitx.shade_core.compose.state.CaptureState
 import com.unitx.shade_core.compose.state.ShadeResultHolder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun rememberPermissionLauncher(
@@ -65,7 +67,8 @@ internal fun rememberSingleMediaLauncher(
     prefix: String,
     extension: String,
     context: Context,
-    callback: ShadeResultHolder
+    callback: ShadeResultHolder,
+    scope: CoroutineScope
 ): ActivityResultLauncher<PickVisualMediaRequest>? {
 
     if (!enabled) return null
@@ -74,23 +77,25 @@ internal fun rememberSingleMediaLauncher(
         PickVisualMedia()
     ) { uri ->
 
-        val result = uri?.let {
-            val file = if (copyToCache) {
-                FileHelper.copyUriToCache(
-                    context,
-                    it,
-                    prefix,
-                    extension
-                )
-            } else null
+        scope.launch {
 
-            ShadeResult.Single(it, file)
+            val result = uri?.let {
+                val file = if (copyToCache) {
+                    FileHelper.copyUriToCache(
+                        context,
+                        it,
+                        prefix,
+                        extension
+                    )
+                } else null
+
+                ShadeResult.Single(it, file)
+            }
+
+            callback.invoke(result, ShadeError.PickCancelled)
         }
-
-        callback.invoke(result, ShadeError.PickCancelled)
     }
 }
-
 @Composable
 internal fun rememberMultiMediaLauncher(
     enabled: Boolean,
@@ -99,7 +104,8 @@ internal fun rememberMultiMediaLauncher(
     prefix: String,
     extension: String,
     context: Context,
-    callback: ShadeResultHolder
+    callback: ShadeResultHolder,
+    scope: CoroutineScope
 ): ActivityResultLauncher<PickVisualMediaRequest>? {
 
     if (!enabled) return null
@@ -110,24 +116,28 @@ internal fun rememberMultiMediaLauncher(
         )
     ) { uris ->
 
-        val items = uris.map { uri ->
-            val file = if (copyToCache) {
-                FileHelper.copyUriToCache(
-                    context,
-                    uri,
-                    prefix,
-                    extension
-                )
-            } else null
+        scope.launch {
 
-            ShadeResult.ShadeMedia(uri, file)
+            val items = uris.map { uri ->
+                val file = if (copyToCache) {
+                    FileHelper.copyUriToCache(
+                        context,
+                        uri,
+                        prefix,
+                        extension
+                    )
+                } else null
+
+                ShadeResult.ShadeMedia(uri, file)
+            }
+
+            val result =
+                if (items.isNotEmpty()) {
+                    ShadeResult.Multiple(items)
+                } else null
+
+            callback.invoke(result, ShadeError.PickCancelled)
         }
-
-        val result =
-            if (items.isNotEmpty()) ShadeResult.Multiple(items)
-            else null
-
-        callback.invoke(result, ShadeError.PickCancelled)
     }
 }
 
@@ -138,7 +148,8 @@ internal fun rememberDocumentLauncher(
     prefix: String,
     extensionProvider: (Uri) -> String,
     context: Context,
-    callback: ShadeResultHolder
+    callback: ShadeResultHolder,
+    scope: CoroutineScope
 ): ActivityResultLauncher<Array<String>>? {
 
     if (!enabled) return null
@@ -147,26 +158,33 @@ internal fun rememberDocumentLauncher(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
 
-        val result = uri?.let {
-            val file = if (copyToCache) {
-                FileHelper.copyUriToCache(
-                    context,
-                    it,
-                    prefix,
-                    extensionProvider(it)
-                )
-            } else null
+        scope.launch {
 
-            if (copyToCache && file == null) null
-            else ShadeResult.Single(it, file)
+            val result = uri?.let {
+                val file = if (copyToCache) {
+                    FileHelper.copyUriToCache(
+                        context,
+                        it,
+                        prefix,
+                        extensionProvider(it)
+                    )
+                } else null
+
+                if (copyToCache && file == null) {
+                    null
+                } else {
+                    ShadeResult.Single(it, file)
+                }
+            }
+
+            val error =
+                if (uri != null && result == null) {
+                    ShadeError.FileSaveFailed
+                } else {
+                    ShadeError.PickCancelled
+                }
+
+            callback.invoke(result, error)
         }
-
-        val error =
-            if (uri != null && result == null)
-                ShadeError.FileSaveFailed
-            else
-                ShadeError.PickCancelled
-
-        callback.invoke(result, error)
     }
 }

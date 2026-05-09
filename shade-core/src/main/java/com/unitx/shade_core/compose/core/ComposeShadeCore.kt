@@ -22,14 +22,9 @@ internal class ComposeShadeCore(
     private val documentHandler: ComposeDocumentHandler,
 ) : ShadeCore(registrar = NoOpRegistrar, config = config) {
 
-    override fun registerLaunchers() {
-        // Launchers are registered via rememberLauncherForActivityResult in
-        // rememberShade — nothing to do here.
-    }
-
-    override fun implementHandlers() {
-        // Handlers are wired by
-        // rememberShade — nothing to do here.
+    override fun initComponents() {
+        // No need to initialize xml components when using compose
+        // compose handles them in it's own way
     }
 
     override fun launch(action: ShadeAction) {

@@ -3,6 +3,7 @@ package com.unitx.shade_core.registrar
 import android.content.Context
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Abstraction over the launcher-registration surface that exists on both
@@ -32,4 +33,6 @@ interface ShadeRegistrar {
      * check "Don't ask again").
      */
     fun shouldShowRationale(permission: String): Boolean
+
+    fun lifecycleCleanup(scope: CoroutineScope)
 }

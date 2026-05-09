@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
 import com.unitx.shade_core.registrar.ShadeRegistrar
+import kotlinx.coroutines.CoroutineScope
 
 /** No-op [com.unitx.shade_core.registrar.ShadeRegistrar] stub — only used so [com.unitx.shade_core.core.ShadeCore]'s constructor is satisfied. */
 internal object NoOpRegistrar : ShadeRegistrar {
@@ -16,4 +17,7 @@ internal object NoOpRegistrar : ShadeRegistrar {
     ): ActivityResultLauncher<I> = error("NoOpRegistrar.register must never be called")
 
     override fun shouldShowRationale(permission: String) = false
+    override fun lifecycleCleanup(scope: CoroutineScope) {
+        error("NoOpRegistrar.scopeClear must never be called")
+    }
 }

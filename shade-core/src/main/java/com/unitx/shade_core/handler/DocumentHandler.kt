@@ -9,6 +9,8 @@ import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.LauncherRegistry
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Handles PDF and generic document picking flows.
@@ -21,7 +23,8 @@ import com.unitx.shade_core.common.result.ShadeResult
 internal class DocumentHandler(
     private val context: Context,
     private val config: ShadeConfig,
-    private val registry: LauncherRegistry
+    private val registry: LauncherRegistry,
+    private val scope: CoroutineScope
 ) {
 
     init {
@@ -62,28 +65,28 @@ internal class DocumentHandler(
         onFailure: ((ShadeError) -> Unit)?,
         onResult: ((ShadeResult.Single) -> Unit)?
     ) {
-        if (uri == null) {
-            onFailure?.invoke(ShadeError.PickCancelled)
-            return
+        scope.launch {
+            if (uri == null) {
+                onFailure?.invoke(ShadeError.PickCancelled)
+                return@launch
+            }
+
+            val file = if (copyToCache) {
+                FileHelper.copyUriToCache(
+                    context,
+                    uri,
+                    prefix,
+                    extension(uri)
+                )
+            } else null
+
+            if (copyToCache && file == null) {
+                onFailure?.invoke(ShadeError.FileSaveFailed)
+                return@launch
+            }
+
+            onResult?.invoke(ShadeResult.Single(uri, file))
         }
-
-        val file = if (copyToCache) {
-            FileHelper.copyUriToCache(
-                context,
-                uri,
-                prefix,
-                extension(uri)
-            )
-        } else null
-
-        if (copyToCache && file == null) {
-            onFailure?.invoke(ShadeError.FileSaveFailed)
-            return
-        }
-
-        onResult?.invoke(
-            ShadeResult.Single(uri, file)
-        )
     }
 
     fun handlePdf() {
