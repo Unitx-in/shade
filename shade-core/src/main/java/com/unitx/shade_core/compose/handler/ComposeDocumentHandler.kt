@@ -44,7 +44,8 @@ internal class ComposeDocumentHandler(
                     context = context,
                     uri = single.uri,
                     prefix = "PDF_",
-                    extension = ".pdf"
+                    extension = ".pdf",
+                    onProgress = null, // Caching is not available for pdf
                 )
 
                 if (file == null) {
@@ -76,8 +77,7 @@ internal class ComposeDocumentHandler(
 
             scope.launch {
 
-                val file =
-                    if (documentConfig.copyToCache) {
+                val file = if (documentConfig.copyToCache?.enabled == true) {
 
                         FileHelper.copyUriToCache(
                             context = context,
@@ -86,12 +86,13 @@ internal class ComposeDocumentHandler(
                             extension = FileHelper.extensionFromUri(
                                 context,
                                 single.uri
-                            )
+                            ),
+                            onProgress = documentConfig.copyToCache?.onProgress
                         )
 
                     } else null
 
-                if (documentConfig.copyToCache && file == null) {
+                if (documentConfig.copyToCache?.enabled == true && file == null) {
                     documentConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
                     return@launch
                 }

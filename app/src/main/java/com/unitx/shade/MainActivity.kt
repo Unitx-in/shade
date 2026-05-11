@@ -1,6 +1,7 @@
 package com.unitx.shade
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,7 +18,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.unitx.shade.ui.theme.ShadeTheme
 import com.unitx.shade_core.common.action.ShadeAction
-import com.unitx.shade_core.common.config.CompressionConfig
+import com.unitx.shade_core.common.config.extend.ProgressConfig
+import com.unitx.shade_core.common.result.ShadeResult
 import com.unitx.shade_core.compose.rememberShade
 
 class MainActivity : ComponentActivity() {
@@ -47,14 +49,28 @@ class MainActivity : ComponentActivity() {
                                         Toast.makeText(context, "Image captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
                                     }
                                     onFailure { error->
-                                        Toast.makeText(context, "Image captured: ${error.toString()}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "$error", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                gallery {
+                                    multiSelect(10)
+                                    copyToCache{
+                                        enabled = true
+                                        onProgress = { progressConfig->
+                                            progressConfig as ProgressConfig.Copying
+                                            Log.i("Copying", progressConfig.percent.toString())
+                                        }
+                                    }
+                                    onResult { multiple->
+                                        multiple as ShadeResult.Multiple
+                                        Toast.makeText(context, "Images selected: ${multiple.items}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
                         }
 
                         LaunchedEffect(Unit) {
-                            shade.launch(ShadeAction.Image.Camera)
+                            shade.launch(ShadeAction.Image.Gallery)
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-package com.unitx.shade_core.common.config
+package com.unitx.shade_core.common.config.extend
 
 import com.unitx.shade_core.common.compressor.CompressFormat
 
@@ -16,4 +16,5 @@ class CompressionConfig {
     var videoBitrate: Int = 2_000_000
     var frameRate: Int = 30
     var keyFrameInterval: Int = 2
+    var onProgress: ((ProgressConfig) -> Unit)? = null
 }

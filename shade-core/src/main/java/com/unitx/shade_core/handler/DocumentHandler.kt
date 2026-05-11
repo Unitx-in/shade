@@ -6,6 +6,7 @@ import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.action.ShadeAction
 import com.unitx.shade_core.common.config.ShadeConfig
+import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.core.LauncherRegistry
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
@@ -33,7 +34,7 @@ internal class DocumentHandler(
 
             handleDocumentResult(
                 uri = uri,
-                copyToCache = true,
+                cacheConfig = null,
                 prefix = "PDF_",
                 extension = { ".pdf" },
                 onFailure = pdfConfig.onFailure,
@@ -46,7 +47,7 @@ internal class DocumentHandler(
 
             handleDocumentResult(
                 uri = uri,
-                copyToCache = docConfig.copyToCache,
+                cacheConfig = docConfig.copyToCache,
                 prefix = "DOC_",
                 extension = {
                     FileHelper.extensionFromUri(context, it)
@@ -59,7 +60,7 @@ internal class DocumentHandler(
 
     private fun handleDocumentResult(
         uri: Uri?,
-        copyToCache: Boolean,
+        cacheConfig: CacheConfig?,
         prefix: String,
         extension: (Uri) -> String,
         onFailure: ((ShadeError) -> Unit)?,
@@ -71,16 +72,17 @@ internal class DocumentHandler(
                 return@launch
             }
 
-            val file = if (copyToCache) {
+            val file = if (cacheConfig?.enabled == true) {
                 FileHelper.copyUriToCache(
-                    context,
-                    uri,
-                    prefix,
-                    extension(uri)
+                    context = context,
+                    uri = uri,
+                    prefix = prefix,
+                    extension = extension(uri),
+                    onProgress = cacheConfig.onProgress
                 )
             } else null
 
-            if (copyToCache && file == null) {
+            if (cacheConfig?.enabled == true && file == null) {
                 onFailure?.invoke(ShadeError.FileSaveFailed)
                 return@launch
             }

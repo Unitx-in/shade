@@ -83,6 +83,7 @@ internal fun rememberSingleMediaLauncher(
         callback.invoke(result, ShadeError.PickCancelled)
     }
 }
+
 @Composable
 internal fun rememberMultiMediaLauncher(
     enabled: Boolean,
@@ -128,13 +129,12 @@ internal fun rememberDocumentLauncher(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
 
-        val result =
-            uri?.let {
-                ShadeResult.Single(
-                    uri = it,
-                    file = null
-                )
-            }
+        val result = uri?.let {
+            ShadeResult.Single(
+                uri = it,
+                file = null
+            )
+        }
 
         callback.invoke(result, ShadeError.PickCancelled)
     }

@@ -1,5 +1,7 @@
-package com.unitx.shade_core.common.config
+package com.unitx.shade_core.common.config.base
 
+import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 
@@ -29,33 +31,24 @@ import com.unitx.shade_core.common.result.ShadeResult
  */
 class GalleryConfig {
 
-    internal var isMultiSelect: Boolean = false
-    internal var copyToCache: Boolean = false
-    internal var compress: CompressionConfig? = null
-    internal var maxItems: Int = Int.MAX_VALUE
-
     internal var onResult: ((ShadeResult) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
+    internal var isMultiSelect: Boolean = false
+    internal var copyToCache: CacheConfig? = null
+    internal var compress: CompressionConfig? = null
+    internal var maxItems: Int = Int.MAX_VALUE
 
     fun compress(block: CompressionConfig.() -> Unit) {
         compress = CompressionConfig().apply(block)
     }
 
-    /**
-     * Enable multi-select mode.
-     *
-     * @param maxItems Maximum number of items the user can pick.
-     *   Pass [Int.MAX_VALUE] (default) to let the system decide.
-     *   Note: the system picker may enforce its own lower cap on older APIs.
-     */
-    fun multiSelect(maxItems: Int = Int.MAX_VALUE, copyToCache: Boolean = false) {
+    fun multiSelect(maxItems: Int = Int.MAX_VALUE) {
         isMultiSelect = true
         this.maxItems = maxItems
-        this.copyToCache = copyToCache
     }
 
-    fun copyToCache(enabled: Boolean = true) {
-        this.copyToCache = enabled
+    fun copyToCache(block: CacheConfig.() -> Unit) {
+        copyToCache = CacheConfig().apply(block)
     }
 
     fun onResult(block: (ShadeResult) -> Unit) {

@@ -113,44 +113,40 @@ internal class LauncherRegistry(
     }
 
     fun registerConfigured() {
-        // Camera permission — only if image or video camera configured
-        if (config.image?.camera != null || config.video?.camera != null)
-            cameraPermissionLauncher
 
-        // Media permission — only if video gallery configured
-        if (config.video?.gallery != null)
-            mediaPermissionLauncher
+        val imageConfig = config.image
+        val videoConfig = config.video
 
-        // Image camera
-        if (config.image?.camera != null)
+        val hasCamera = imageConfig?.camera != null || videoConfig?.camera != null
+        val hasGallery = imageConfig?.gallery != null || videoConfig?.gallery != null
+
+        if (hasCamera) cameraPermissionLauncher
+        if (hasGallery) mediaPermissionLauncher
+
+        imageConfig?.camera?.let {
             imageCameraLauncher
-
-        // Image gallery — single or multi, not both
-        if (config.image?.gallery != null) {
-            if (config.image?.gallery?.isMultiSelect == true)
-                imageGalleryMultiLauncher
-            else
-                imageGallerySingleLauncher
         }
 
-        // Video camera
-        if (config.video?.camera != null)
+        imageConfig?.gallery?.let { gallery ->
+            if (gallery.isMultiSelect) imageGalleryMultiLauncher
+            else imageGallerySingleLauncher
+        }
+
+        videoConfig?.camera?.let {
             videoCameraLauncher
-
-        // Video gallery — single or multi, not both
-        if (config.video?.gallery != null) {
-            if (config.video?.gallery?.isMultiSelect == true)
-                videoGalleryMultiLauncher
-            else
-                videoGallerySingleLauncher
         }
 
-        // PDF
-        if (config.pdf != null)
-            pdfPickerLauncher
+        videoConfig?.gallery?.let { gallery ->
+            if (gallery.isMultiSelect) videoGalleryMultiLauncher
+            else videoGallerySingleLauncher
+        }
 
-        // Document
-        if (config.document != null)
+        config.pdf?.let {
+            pdfPickerLauncher
+        }
+
+        config.document?.let {
             documentPickerLauncher
+        }
     }
 }

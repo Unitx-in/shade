@@ -3,7 +3,8 @@ package com.unitx.shade_core.common.compressor
 import android.content.Context
 import android.net.Uri
 import com.unitx.shade_core.common.FileHelper
-import com.unitx.shade_core.common.config.CompressionConfig
+import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,8 +19,8 @@ internal object ImageProcessor {
         file: File? = null,
         prefix: String,
         extension: String,
-        copyToCache: Boolean = false,
-        compression: CompressionConfig?
+        copyToCache: CacheConfig?,
+        compression: CompressionConfig?,
     ): ShadeResult.ShadeMedia = withContext(Dispatchers.IO) {
 
         val processedFile = if (compression?.enabled == true) {
@@ -31,13 +32,14 @@ internal object ImageProcessor {
                     compression = compression
                 )
 
-            } else file ?: if (copyToCache) {
+            } else file ?: if (copyToCache?.enabled == true) {
 
                     FileHelper.copyUriToCache(
                         context = context,
                         uri = uri,
                         prefix = prefix,
-                        extension = extension
+                        extension = extension,
+                        onProgress = copyToCache.onProgress
                     )
 
                 } else null
@@ -90,7 +92,6 @@ internal object ImageProcessor {
             )
 
         } finally {
-
             sourceFile.delete()
         }
     }

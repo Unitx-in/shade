@@ -1,5 +1,6 @@
-package com.unitx.shade_core.common.config
+package com.unitx.shade_core.common.config.base
 
+import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 
@@ -25,15 +26,9 @@ import com.unitx.shade_core.common.result.ShadeResult
  */
 class DocumentConfig {
 
-    /**
-     * When true, Shade copies the picked document into [Context.cacheDir]
-     * and populates [ShadeResult.Single.file]. Defaults to false.
-     */
-    internal var copyToCache: Boolean = false
-
     internal var onResult: ((ShadeResult.Single) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
-
+    internal var copyToCache: CacheConfig? = null
     fun onResult(block: (ShadeResult.Single) -> Unit) {
         onResult = block
     }
@@ -42,8 +37,8 @@ class DocumentConfig {
         onFailure = block
     }
 
-    fun copyToCache(enabled: Boolean) {
-        copyToCache = enabled
+    fun copyToCache(block: CacheConfig.() -> Unit) {
+        copyToCache = CacheConfig().apply(block)
     }
 
 }

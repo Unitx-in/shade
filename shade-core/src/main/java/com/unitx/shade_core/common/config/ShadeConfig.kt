@@ -1,5 +1,10 @@
 package com.unitx.shade_core.common.config
 
+import com.unitx.shade_core.common.config.base.DocumentConfig
+import com.unitx.shade_core.common.config.base.PdfConfig
+import com.unitx.shade_core.common.config.scope.ImageScope
+import com.unitx.shade_core.common.config.scope.VideoScope
+
 /**
  * Root DSL configuration block for Shade.
  *

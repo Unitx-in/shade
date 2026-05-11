@@ -54,7 +54,8 @@ internal class ComposeCameraHandler(
                     file = captureState.file,
                     prefix = "IMG_",
                     extension = ".jpg",
-                    compression = cameraConfig.compress
+                    compression = cameraConfig.compress,
+                    copyToCache = null // Caching is not available in camera
                 )
 
                 cameraConfig.onResult?.invoke(
@@ -82,7 +83,8 @@ internal class ComposeCameraHandler(
                     file = captureState.file,
                     prefix = "VID_",
                     extension = ".mp4",
-                    compression = cameraConfig.compress
+                    compression = cameraConfig.compress,
+                    copyToCache = null // Caching is not available in camera
                 )
 
                 cameraConfig.onResult?.invoke(

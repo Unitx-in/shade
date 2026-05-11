@@ -2,7 +2,9 @@ package com.unitx.shade_core.common
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.core.content.FileProvider
+import com.unitx.shade_core.common.config.extend.ProgressConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -76,12 +78,44 @@ internal object FileHelper {
         context: Context,
         uri: Uri,
         prefix: String,
-        extension: String
+        extension: String,
+        onProgress: ((ProgressConfig.Copying) -> Unit)?
     ): File? = withContext(Dispatchers.IO) {
         try {
             val file = File.createTempFile(prefix, extension, context.cacheDir)
+
+            val totalBytes = context.contentResolver.query(
+                uri, arrayOf(OpenableColumns.SIZE), null, null, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getLong(0) else -1L
+            } ?: -1L
+
             context.contentResolver.openInputStream(uri)?.use { input ->
-                file.outputStream().use { output -> input.copyTo(output) }
+                file.outputStream().use { output ->
+                    if (onProgress == null || totalBytes <= 0L) {
+                        // No progress needed or size unknown — fast path
+                        input.copyTo(output)
+                    } else {
+                        // Chunk-based copy with progress emission
+                        val buffer = ByteArray(8192)
+                        var bytesCopied = 0L
+                        var lastPercent = -1
+                        var bytes = input.read(buffer)
+                        while (bytes >= 0) {
+                            output.write(buffer, 0, bytes)
+                            bytesCopied += bytes
+                            val percent = ((bytesCopied * 100L) / totalBytes).toInt().coerceIn(0, 100)
+                            // Only emit when percent actually changes — avoids flooding the callback
+                            if (percent != lastPercent) {
+                                lastPercent = percent
+                                withContext(Dispatchers.Main) {
+                                    onProgress.invoke(ProgressConfig.Copying(percent))
+                                }
+                            }
+                            bytes = input.read(buffer)
+                        }
+                    }
+                }
             }
             file
         } catch (e: Exception) {

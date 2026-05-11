@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
-import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.PermissionHelper
 import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.core.LauncherRegistry
@@ -15,8 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import com.unitx.shade_core.common.compressor.ImageProcessor
 import com.unitx.shade_core.common.compressor.VideoProcessor
-import com.unitx.shade_core.common.config.CompressionConfig
-import java.io.File
+import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.config.extend.CacheConfig
 
 /**
  * Handles all gallery-related media flows — image and video picking,
@@ -188,12 +187,12 @@ internal class GalleryHandler(
         uri: Uri?,
         prefix: String,
         extension: String,
-        copyToCache: Boolean,
+        copyToCache: CacheConfig?,
         processor: suspend (
             uri: Uri,
             prefix: String,
             extension: String,
-            copyToCache: Boolean,
+            copyToCache: CacheConfig?,
             compression: CompressionConfig?
         ) -> ShadeResult.ShadeMedia,
         compression: CompressionConfig?,
@@ -237,12 +236,12 @@ internal class GalleryHandler(
         uris: List<Uri>,
         prefix: String,
         extension: String,
-        copyToCache: Boolean,
+        copyToCache: CacheConfig?,
         processor: suspend (
             uri: Uri,
             prefix: String,
             extension: String,
-            copyToCache: Boolean,
+            copyToCache: CacheConfig?,
             compression: CompressionConfig?
         ) -> ShadeResult.ShadeMedia,
         compression: CompressionConfig?,

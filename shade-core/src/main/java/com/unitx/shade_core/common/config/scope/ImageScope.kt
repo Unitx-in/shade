@@ -1,27 +1,28 @@
-package com.unitx.shade_core.common.config
+package com.unitx.shade_core.common.config.scope
+
+import com.unitx.shade_core.common.config.base.CameraConfig
+import com.unitx.shade_core.common.config.base.GalleryConfig
 
 /**
- * DSL scope for video-related configuration.
- *
- * Mirrors [ImageScope] exactly — camera captures, gallery picks,
- * and the same multi-select support on the gallery side.
+ * DSL scope for image-related configuration.
  *
  * ```
  * shade = Shade.with(this) {
- *     video {
+ *     image {
  *         camera {
- *             onResult { result -> /* ShadeResult.Captured — has .file + .uri */ }
+ *             onResult { result -> /* ShadeResult.Captured */ }
  *             onFailure { error -> }
  *         }
  *         gallery {
- *             onResult { result -> /* ShadeResult.Single */ }
+ *             multiSelect(maxItems = 3)
+ *             onResult { result -> /* ShadeResult.Single or .Multiple */ }
  *             onFailure { error -> }
  *         }
  *     }
  * }
  * ```
  */
-class VideoScope {
+class ImageScope {
     internal var camera: CameraConfig? = null
     internal var gallery: GalleryConfig? = null
 
