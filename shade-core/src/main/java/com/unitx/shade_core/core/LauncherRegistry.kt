@@ -112,18 +112,45 @@ internal class LauncherRegistry(
         }
     }
 
-    // ── Eager initialisation — must be called before host reaches STARTED ─────
+    fun registerConfigured() {
+        // Camera permission — only if image or video camera configured
+        if (config.image?.camera != null || config.video?.camera != null)
+            cameraPermissionLauncher
 
-    fun registerAll() {
-        cameraPermissionLauncher
-        mediaPermissionLauncher
-        imageCameraLauncher
-        imageGallerySingleLauncher
-        imageGalleryMultiLauncher
-        videoCameraLauncher
-        videoGallerySingleLauncher
-        videoGalleryMultiLauncher
-        pdfPickerLauncher
-        documentPickerLauncher
+        // Media permission — only if video gallery configured
+        if (config.video?.gallery != null)
+            mediaPermissionLauncher
+
+        // Image camera
+        if (config.image?.camera != null)
+            imageCameraLauncher
+
+        // Image gallery — single or multi, not both
+        if (config.image?.gallery != null) {
+            if (config.image?.gallery?.isMultiSelect == true)
+                imageGalleryMultiLauncher
+            else
+                imageGallerySingleLauncher
+        }
+
+        // Video camera
+        if (config.video?.camera != null)
+            videoCameraLauncher
+
+        // Video gallery — single or multi, not both
+        if (config.video?.gallery != null) {
+            if (config.video?.gallery?.isMultiSelect == true)
+                videoGalleryMultiLauncher
+            else
+                videoGallerySingleLauncher
+        }
+
+        // PDF
+        if (config.pdf != null)
+            pdfPickerLauncher
+
+        // Document
+        if (config.document != null)
+            documentPickerLauncher
     }
 }

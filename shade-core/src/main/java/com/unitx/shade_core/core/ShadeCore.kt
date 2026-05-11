@@ -27,8 +27,8 @@ open class ShadeCore(
     private val config: ShadeConfig
 ) {
 
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val registry = LauncherRegistry(registrar, config)
+    private val scope: CoroutineScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
+    private val registry by lazy { LauncherRegistry(registrar, config) }
 
     private lateinit var cameraHandler: CameraHandler
     private lateinit var galleryHandler: GalleryHandler
@@ -44,13 +44,13 @@ open class ShadeCore(
 
     private fun implementHandlers() {
         val context = registrar.context
-        cameraHandler   = CameraHandler(context, config, registry, scope)
-        galleryHandler  = GalleryHandler(context, config, registry, scope)
+        cameraHandler = CameraHandler(context, config, registry, scope)
+        galleryHandler = GalleryHandler(context, config, registry, scope)
         documentHandler = DocumentHandler(context, config, registry, scope)
     }
 
     private fun registerLaunchers() {
-        registry.registerAll()
+        registry.registerConfigured()
     }
 
     /**
@@ -62,12 +62,12 @@ open class ShadeCore(
      */
     open fun launch(action: ShadeAction) {
         when (action) {
-            is ShadeAction.Image.Camera  -> cameraHandler.handleImageCamera()
+            is ShadeAction.Image.Camera -> cameraHandler.handleImageCamera()
             is ShadeAction.Image.Gallery -> galleryHandler.handleImageGallery()
-            is ShadeAction.Video.Camera  -> cameraHandler.handleVideoCamera()
+            is ShadeAction.Video.Camera -> cameraHandler.handleVideoCamera()
             is ShadeAction.Video.Gallery -> galleryHandler.handleVideoGallery()
-            is ShadeAction.Pdf           -> documentHandler.handlePdf()
-            is ShadeAction.Document      -> documentHandler.handleDocument(action)
+            is ShadeAction.Pdf -> documentHandler.handlePdf()
+            is ShadeAction.Document -> documentHandler.handleDocument(action)
         }
     }
 

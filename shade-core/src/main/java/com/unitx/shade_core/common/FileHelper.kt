@@ -55,6 +55,23 @@ internal object FileHelper {
             null
         }
 
+    internal fun extensionFromUri(context: Context, uri: Uri): String {
+        val mime = context.contentResolver.getType(uri) ?: return ".bin"
+        return when {
+            mime.contains("pdf") -> ".pdf"
+            mime.contains("word") -> ".doc"
+            mime.contains("wordprocess") -> ".docx"
+            mime.contains("ms-excel") -> ".xls"
+            mime.contains("spreadsheet") -> ".xlsx"
+            mime.contains("powerpoint") -> ".ppt"
+            mime.contains("presentation") -> ".pptx"
+            mime.contains("text/plain") -> ".txt"
+            mime.contains("text/csv") -> ".csv"
+            mime.contains("rtf") -> ".rtf"
+            else -> ".bin"
+        }
+    }
+
     internal suspend fun copyUriToCache(
         context: Context,
         uri: Uri,
@@ -70,23 +87,6 @@ internal object FileHelper {
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             null
-        }
-    }
-
-    internal fun extensionFromUri(context: Context, uri: Uri): String {
-        val mime = context.contentResolver.getType(uri) ?: return ".bin"
-        return when {
-            mime.contains("pdf") -> ".pdf"
-            mime.contains("word") -> ".doc"
-            mime.contains("wordprocess") -> ".docx"
-            mime.contains("ms-excel") -> ".xls"
-            mime.contains("spreadsheet") -> ".xlsx"
-            mime.contains("powerpoint") -> ".ppt"
-            mime.contains("presentation") -> ".pptx"
-            mime.contains("text/plain") -> ".txt"
-            mime.contains("text/csv") -> ".csv"
-            mime.contains("rtf") -> ".rtf"
-            else -> ".bin"
         }
     }
 }
