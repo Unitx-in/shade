@@ -40,23 +40,19 @@ internal object FileHelper {
         }
     }
 
-    internal suspend fun createTempFile(
+    internal fun createTempFile(
         context: Context,
         prefix: String,
         ext: String
     ): Pair<File, Uri>? =
-        withContext(Dispatchers.IO) {
-            try {
-                val file = File.createTempFile(prefix, ext, context.cacheDir)
-                val uri = getUriFromFile(context, file)
-                Pair(file, uri)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: IllegalStateException) {
-                throw e
-            }  catch (_: Exception){
-                null
-            }
+        try {
+            val file = File.createTempFile(prefix, ext, context.cacheDir)
+            val uri = getUriFromFile(context, file)
+            Pair(file, uri)
+        } catch (e: IllegalStateException) {
+            throw e
+        }  catch (_: Exception){
+            null
         }
 
     internal suspend fun copyUriToCache(

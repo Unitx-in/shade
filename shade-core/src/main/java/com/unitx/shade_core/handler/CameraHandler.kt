@@ -175,21 +175,19 @@ internal class CameraHandler(
         onFailure: (() -> Unit)?,
         launcher: ActivityResultLauncher<Uri>
     ) {
-        scope.launch {
-            val (file, uri) = FileHelper.createTempFile(
-                context,
-                prefix,
-                extension
-            ) ?: run {
-                onFailure?.invoke()
-                return@launch
-            }
-
-            tempCaptureFile = file
-            tempCaptureUri = uri
-
-            launcher.launch(uri)
+        val (file, uri) = FileHelper.createTempFile(
+            context,
+            prefix,
+            extension
+        ) ?: run {
+            onFailure?.invoke()
+            return
         }
+
+        tempCaptureFile = file
+        tempCaptureUri = uri
+
+        launcher.launch(uri)
     }
 
     private fun requireCameraPermission(target: CameraTarget) {

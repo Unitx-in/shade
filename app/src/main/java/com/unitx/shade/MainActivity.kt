@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
                                         Toast.makeText(context, "Image captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
                                     }
                                     onFailure { error->
-
+                                        Toast.makeText(context, "Image captured: ${error.toString()}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }

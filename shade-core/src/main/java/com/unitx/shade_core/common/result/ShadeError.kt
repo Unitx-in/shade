@@ -20,7 +20,7 @@ sealed class ShadeError {
     data object CaptureFailed : ShadeError()
 
     /** The picker was opened but the user cancelled / nothing was returned. */
-    object PickCancelled : ShadeError()
+    data object PickCancelled : ShadeError()
 
     /** The picker returned a result but it could not be used (null URI, etc.). */
     data object PickFailed : ShadeError()

@@ -13,6 +13,7 @@ import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 import com.unitx.shade_core.compose.state.CaptureState
+import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -20,15 +21,14 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun rememberPermissionLauncher(
     enabled: Boolean,
-    onResult: ((Boolean) -> Unit)?
+    permCallbacks: PermissionCallbackHolder,
+    which: (PermissionCallbackHolder) -> ((Boolean) -> Unit)?
 ): ActivityResultLauncher<String>? {
-
     if (!enabled) return null
-
     return rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        onResult?.invoke(granted)
+        which(permCallbacks)?.invoke(granted)
     }
 }
 

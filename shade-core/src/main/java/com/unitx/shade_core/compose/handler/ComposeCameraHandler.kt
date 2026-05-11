@@ -142,24 +142,20 @@ internal class ComposeCameraHandler(
     }
 
     fun launchImageCamera() {
-        scope.launch {
-            val (file, uri) = FileHelper.createTempFile(context, "IMG_", ".jpg") ?: run {
-                config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return@launch
-            }
-            captureState.file = file
-            captureState.uri = uri
-            imageCameraLauncher?.launch(uri)
+        val (file, uri) = FileHelper.createTempFile(context, "IMG_", ".jpg") ?: run {
+            config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return
         }
+        captureState.file = file
+        captureState.uri = uri
+        imageCameraLauncher?.launch(uri)
     }
 
     fun launchVideoCamera() {
-        scope.launch {
-            val (file, uri) = FileHelper.createTempFile(context, "VID_", ".mp4") ?: run {
-                config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return@launch
-            }
-            captureState.file = file
-            captureState.uri = uri
-            videoCameraLauncher?.launch(uri)
+        val (file, uri) = FileHelper.createTempFile(context, "VID_", ".mp4") ?: run {
+            config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return
         }
+        captureState.file = file
+        captureState.uri = uri
+        videoCameraLauncher?.launch(uri)
     }
 }

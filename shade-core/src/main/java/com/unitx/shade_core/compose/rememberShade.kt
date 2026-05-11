@@ -1,6 +1,7 @@
 package com.unitx.shade_core.compose
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -69,14 +70,16 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
 // ── Permission launchers ──────────────────────────────────────────────────
 
     val cameraPermLauncher = rememberPermissionLauncher(
-            enabled = config.image?.camera != null || config.video?.camera != null,
-            onResult = permCallbacks.onCamera
-        )
+        enabled = config.image?.camera != null || config.video?.camera != null,
+        permCallbacks = permCallbacks,
+        which = { it.onCamera }  // read at callback time, not registration time
+    )
 
     val mediaPermLauncher = rememberPermissionLauncher(
-            enabled = config.video?.gallery != null,
-            onResult = permCallbacks.onMedia
-        )
+        enabled = config.video?.gallery != null,
+        permCallbacks = permCallbacks,
+        which = { it.onMedia }
+    )
 
 // ── Image camera ──────────────────────────────────────────────────────────
 
