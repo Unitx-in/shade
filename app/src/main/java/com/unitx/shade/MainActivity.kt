@@ -54,7 +54,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 gallery {
-                                    multiSelect(10)
+                                    multiSelect {
+                                        enabled = true
+                                        maxItems = 10
+                                    }
                                     copyToCache {
                                         enabled = true
                                         onProgress = { progressConfig ->
@@ -68,6 +71,10 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 document {
+//                                    multiSelect {
+//                                        enabled = true
+//                                        maxItems = 2
+//                                    }
                                     copyToCache {
                                         enabled = true
                                         onProgress = {
@@ -76,14 +83,16 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                     onResult { result->
-                                        Log.i("Document", "${result.uri} file: ${result.file?.absolutePath}")
+                                        result as ShadeResult.Multiple
+                                        Log.i("Document", "${result.items.map { it.file?.absolutePath }}")
                                     }
                                 }
                             }
                         }
 
                         LaunchedEffect(Unit) {
-                            shade.launch(ShadeAction.Image.Gallery)
+//                            shade.launch(ShadeAction.Document(listOf(DocumentMimeType.PDF)))
+                            shade.launch(ShadeAction.Image.Camera)
                         }
                     }
                 }

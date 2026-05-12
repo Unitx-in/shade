@@ -5,6 +5,7 @@ import android.net.Uri
 import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.action.ShadeAction
+import com.unitx.shade_core.common.processor.DocumentProcessor
 import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.core.LauncherRegistry
@@ -29,74 +30,70 @@ internal class DocumentHandler(
 ) {
 
     init {
-        registry.onDocumentResult = onDocumentResult@{ uri ->
-            val docConfig = config.document ?: return@onDocumentResult
+        registry.onDocumentSingleResult = onDocumentSingleResult@{ uri ->
+            val docConfig = config.document ?: return@onDocumentSingleResult
 
-            handleDocumentResult(
-                uri = uri,
-                cacheConfig = docConfig.copyToCache,
-                prefix = "DOC_",
-                extension = {
-                    FileHelper.extensionFromUri(context, it)
-                },
-                onFailure = docConfig.onFailure,
-                onResult = docConfig.onResult
-            )
-        }
-    }
-
-    private fun handleDocumentResult(
-        uri: Uri?,
-        cacheConfig: CacheConfig?,
-        prefix: String,
-        extension: (Uri) -> String,
-        onFailure: ((ShadeError) -> Unit)?,
-        onResult: ((ShadeResult.Single) -> Unit)?
-    ) {
-        scope.launch {
-            if (uri == null) {
-                onFailure?.invoke(ShadeError.PickCancelled)
-                return@launch
-            }
-
-            val file = if (cacheConfig?.enabled == true) {
-                FileHelper.copyUriToCache(
-                    context = context,
-                    uri = uri,
-                    prefix = prefix,
-                    extension = extension(uri),
-                    onProgress = cacheConfig.onProgress
-                )
-            } else null
-
-            if (cacheConfig?.enabled == true && file == null) {
-                onFailure?.invoke(ShadeError.FileSaveFailed)
-                return@launch
-            }
-
-            val finalUri =
-                if (file != null) {
-                    FileHelper.getUriFromFile(context, file)
-                } else {
-                    uri
+            scope.launch {
+                if (uri == null) {
+                    docConfig.onFailure?.invoke(ShadeError.PickCancelled)
+                    return@launch
                 }
 
-            onResult?.invoke(
-                ShadeResult.Single(
-                    uri = finalUri,
-                    file = file
+                val processed = DocumentProcessor.process(
+                    context = context,
+                    uri = uri,
+                    prefix = "DOC_",
+                    extension = FileHelper.extensionFromUri(context, uri),
+                    copyToCache = docConfig.copyToCache,
                 )
-            )
+
+                if (docConfig.copyToCache?.enabled == true && processed.file == null) {
+                    docConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
+                    return@launch
+                }
+
+                docConfig.onResult?.invoke(
+                    ShadeResult.Single(uri = processed.uri, file = processed.file)
+                )
+            }
+        }
+
+        registry.onDocumentMultiResult = onDocumentMultiResult@{ uris ->
+            val docConfig = config.document ?: return@onDocumentMultiResult
+
+            scope.launch {
+                if (uris.isEmpty()) {
+                    docConfig.onFailure?.invoke(ShadeError.PickCancelled)
+                    return@launch
+                }
+
+                val items = DocumentProcessor.process(
+                    context = context,
+                    uris = uris,
+                    prefix = "DOC_",
+                    extensions = uris.map { FileHelper.extensionFromUri(context, it) },
+                    copyToCache = docConfig.copyToCache,
+                )
+
+                if (docConfig.copyToCache?.enabled == true && items.any { it.file == null }) {
+                    docConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
+                    return@launch
+                }
+
+                docConfig.onResult?.invoke(ShadeResult.Multiple(items))
+            }
         }
     }
 
     fun handleDocument(action: ShadeAction.Document) {
-        config.document ?: return
+        val docConfig = config.document ?: return
         val mimeTypes = action.mimeTypes
             .map { it.value }
             .takeIf { it.isNotEmpty() }
             ?.toTypedArray()
             ?: DocumentMimeType.ALL_VALUE_TYPED_ARRAY
-        registry.documentPickerLauncher.launch(mimeTypes)
+
+        if (docConfig.multiSelect?.enabled == true) registry.documentMultiLauncher.launch(mimeTypes)
+        else registry.documentSingleLauncher.launch(mimeTypes)
     }
 }

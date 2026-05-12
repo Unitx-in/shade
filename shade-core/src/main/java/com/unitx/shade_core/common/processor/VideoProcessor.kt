@@ -1,10 +1,11 @@
-package com.unitx.shade_core.common.compressor
+package com.unitx.shade_core.common.processor
 
 import android.content.Context
 import android.net.Uri
 import com.unitx.shade_core.common.FileHelper
-import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.compressor.VideoCompressor
 import com.unitx.shade_core.common.config.extend.CacheConfig
+import com.unitx.shade_core.common.config.extend.CompressionConfig
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

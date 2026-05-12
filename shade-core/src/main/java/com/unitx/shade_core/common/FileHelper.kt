@@ -42,13 +42,13 @@ internal object FileHelper {
         }
     }
 
-    internal fun createTempFile(
+    internal suspend fun createTempFile(
         context: Context,
         prefix: String,
         ext: String
     ): Pair<File, Uri>? =
         try {
-            val file = File.createTempFile(prefix, ext, context.cacheDir)
+            val file = withContext(Dispatchers.IO){ File.createTempFile(prefix, ext, context.cacheDir) }
             val uri = getUriFromFile(context, file)
             Pair(file, uri)
         } catch (e: IllegalStateException) {
@@ -81,8 +81,8 @@ internal object FileHelper {
         extension: String,
         onProgress: ((ProgressConfig.Copying) -> Unit)?,
     ): List<File?> = withContext(Dispatchers.IO) {
-        val resultCopy = mutableListOf<File?>()
-        for ((index, uri) in uris.withIndex()){
+
+        uris.mapIndexed { index, uri ->
             copyUriToCache(
                 context = context,
                 uri = uri,
@@ -90,11 +90,28 @@ internal object FileHelper {
                 extension = extension,
                 onProgress = onProgress,
                 fileNumber = index + 1
-            ).also {
-                resultCopy.add(it)
-            }
+            )
         }
-        resultCopy
+    }
+
+    internal suspend fun copyUriToCache(
+        context: Context,
+        uris: List<Uri>,
+        prefix: String,
+        extensions: List<String>,
+        onProgress: ((ProgressConfig.Copying) -> Unit)?,
+    ): List<File?> = withContext(Dispatchers.IO) {
+
+        uris.mapIndexed { index, uri ->
+            copyUriToCache(
+                context = context,
+                uri = uri,
+                prefix = prefix,
+                extension = extensions[index],
+                onProgress = onProgress,
+                fileNumber = index + 1
+            )
+        }
     }
 
     internal suspend fun copyUriToCache(

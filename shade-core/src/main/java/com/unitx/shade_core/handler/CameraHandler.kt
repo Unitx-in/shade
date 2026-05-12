@@ -14,9 +14,10 @@ import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
-import com.unitx.shade_core.common.compressor.ImageProcessor
-import com.unitx.shade_core.common.compressor.VideoProcessor
+import com.unitx.shade_core.common.processor.ImageProcessor
+import com.unitx.shade_core.common.processor.VideoProcessor
 import com.unitx.shade_core.common.config.extend.CompressionConfig
+import kotlinx.coroutines.async
 
 /**
  * Handles all camera-related media flows — image capture and video recording.
@@ -177,19 +178,21 @@ internal class CameraHandler(
         onFailure: (() -> Unit)?,
         launcher: ActivityResultLauncher<Uri>
     ) {
-        val (file, uri) = FileHelper.createTempFile(
-            context,
-            prefix,
-            extension
-        ) ?: run {
-            onFailure?.invoke()
-            return
+        scope.launch {
+            val (file, uri) = FileHelper.createTempFile(
+                context,
+                prefix,
+                extension
+            ) ?: run {
+                onFailure?.invoke()
+                return@launch
+            }
+
+            tempCaptureFile = file
+            tempCaptureUri = uri
+
+            launcher.launch(uri)
         }
-
-        tempCaptureFile = file
-        tempCaptureUri = uri
-
-        launcher.launch(uri)
     }
 
     private fun requireCameraPermission(target: CameraTarget) {

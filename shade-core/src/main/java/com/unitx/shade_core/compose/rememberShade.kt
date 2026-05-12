@@ -1,13 +1,11 @@
 package com.unitx.shade_core.compose
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
-import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.compose.core.ComposeShadeCore
 import com.unitx.shade_core.compose.handler.ComposeCameraHandler
 import com.unitx.shade_core.compose.handler.ComposeDocumentHandler
@@ -76,7 +74,7 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     )
 
     val mediaPermLauncher = rememberPermissionLauncher(
-        enabled = config.video?.gallery != null,
+        enabled = config.video?.gallery != null, //  image gallery uses PickVisualMedia which doesn't need it.
         permCallbacks = permCallbacks,
         which = { it.onMedia }
     )
@@ -97,21 +95,20 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
 
     val imageGallerySingleCallback = remember { ShadeResultHolder() }
 
-    val imageGallerySingleLauncher =
-        rememberSingleMediaLauncher(
-            enabled = config.image?.gallery?.isMultiSelect == false,
-            callback = imageGallerySingleCallback,
-        )
+    val imageGallerySingleLauncher = rememberSingleMediaLauncher(
+        enabled = config.image?.gallery != null && config.image?.gallery?.multiSelect?.enabled != true,
+        callback = imageGallerySingleCallback,
+    )
 
 // ── Image gallery multi ───────────────────────────────────────────────────
 
     val imageGalleryMultiCallback = remember { ShadeResultHolder() }
 
     val imageGalleryMultiLauncher = rememberMultiMediaLauncher(
-            enabled = config.image?.gallery?.isMultiSelect == true,
-            maxItems = config.image?.gallery?.maxItems ?: 2,
-            callback = imageGalleryMultiCallback,
-        )
+        enabled = config.image?.gallery?.multiSelect?.enabled == true,
+        maxItems = config.image?.gallery?.multiSelect?.maxItems ?: 2,
+        callback = imageGalleryMultiCallback,
+    )
 
 // ── Video camera ──────────────────────────────────────────────────────────
 
@@ -130,28 +127,37 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val videoGallerySingleCallback = remember { ShadeResultHolder() }
 
     val videoGallerySingleLauncher = rememberSingleMediaLauncher(
-            enabled = config.video?.gallery?.isMultiSelect == false,
-            callback = videoGallerySingleCallback,
-        )
+        enabled = config.video?.gallery != null && config.video?.gallery?.multiSelect?.enabled != true,
+        callback = videoGallerySingleCallback,
+    )
 
 // ── Video gallery multi ───────────────────────────────────────────────────
 
     val videoGalleryMultiCallback = remember { ShadeResultHolder() }
 
     val videoGalleryMultiLauncher = rememberMultiMediaLauncher(
-            enabled = config.video?.gallery?.isMultiSelect == true,
-            maxItems = config.video?.gallery?.maxItems ?: 2,
-            callback = videoGalleryMultiCallback,
-        )
+        enabled = config.video?.gallery?.multiSelect?.enabled == true,
+        maxItems = config.video?.gallery?.multiSelect?.maxItems ?: 2,
+        callback = videoGalleryMultiCallback,
+    )
 
-// ── Document picker ───────────────────────────────────────────────────────
+// ── Document picker Single ───────────────────────────────────────────────────────
 
-    val documentCallback = remember { ShadeResultHolder() }
+    val documentSingleCallback = remember { ShadeResultHolder() }
 
-    val documentLauncher = rememberDocumentLauncher(
-            enabled = config.document != null,
-            callback = documentCallback,
-        )
+    val documentSingleLauncher = rememberDocumentLauncher(
+        enabled = config.document != null && config.document?.multiSelect?.enabled != true,
+        callback = documentSingleCallback,
+    )
+
+    // ── Document picker multi ─────────────────────────────────────────────────
+
+    val documentMultiCallback = remember { ShadeResultHolder() }
+
+    val documentMultiLauncher = rememberMultiDocumentLauncher(
+        enabled = config.document?.multiSelect?.enabled == true,
+        callback = documentMultiCallback,
+    )
 
     // ── Assemble handlers and build ComposeShadeCore ──────────────────────────
 
@@ -188,9 +194,11 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
         val documentHandler = ComposeDocumentHandler(
             context = context,
             config = config,
-            documentLauncher = documentLauncher,
-            documentCallback = documentCallback,
-            scope = scope
+            scope = scope,
+            documentSingleLauncher = documentSingleLauncher,
+            documentMultiLauncher = documentMultiLauncher,
+            documentSingleCallback = documentSingleCallback,
+            documentMultiCallback = documentMultiCallback,
         )
 
         ComposeShadeCore(

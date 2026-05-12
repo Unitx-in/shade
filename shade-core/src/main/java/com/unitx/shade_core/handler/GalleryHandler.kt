@@ -12,8 +12,8 @@ import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import com.unitx.shade_core.common.compressor.ImageProcessor
-import com.unitx.shade_core.common.compressor.VideoProcessor
+import com.unitx.shade_core.common.processor.ImageProcessor
+import com.unitx.shade_core.common.processor.VideoProcessor
 import com.unitx.shade_core.common.config.extend.CompressionConfig
 import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.base.GalleryConfig
@@ -166,7 +166,7 @@ internal class GalleryHandler(
 
     fun handleImageGallery() {
         val galleryConfig = config.image?.gallery ?: return
-        if (galleryConfig.isMultiSelect)
+        if (galleryConfig.multiSelect?.enabled  == true)
             registry.imageGalleryMultiLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
         else
             registry.imageGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
@@ -275,7 +275,7 @@ internal class GalleryHandler(
 
     private fun launchVideoGallery() {
         val galleryConfig = config.video?.gallery ?: return
-        if (galleryConfig.isMultiSelect)
+        if (galleryConfig.multiSelect?.enabled == true)
             registry.videoGalleryMultiLauncher.launch(PickVisualMediaRequest(PickVisualMedia.VideoOnly))
         else
             registry.videoGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.VideoOnly))

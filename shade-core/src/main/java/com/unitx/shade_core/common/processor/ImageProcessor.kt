@@ -1,11 +1,11 @@
-package com.unitx.shade_core.common.compressor
+package com.unitx.shade_core.common.processor
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import com.unitx.shade_core.common.FileHelper
-import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.compressor.ImageCompressor
 import com.unitx.shade_core.common.config.extend.CacheConfig
+import com.unitx.shade_core.common.config.extend.CompressionConfig
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,24 +26,24 @@ internal object ImageProcessor {
 
         val processedFile = if (compression?.enabled == true) {
 
-                compressFromUri(
-                    context = context,
-                    uri = uri,
-                    prefix = prefix,
-                    compression = compression
-                )
+            compressFromUri(
+                context = context,
+                uri = uri,
+                prefix = prefix,
+                compression = compression
+            )
 
-            } else file ?: if (copyToCache?.enabled == true) {
+        } else file ?: if (copyToCache?.enabled == true) {
 
-                    FileHelper.copyUriToCache(
-                        context = context,
-                        uri = uri,
-                        prefix = prefix,
-                        extension = extension,
-                        onProgress = copyToCache.onProgress
-                    )
+            FileHelper.copyUriToCache(
+                context = context,
+                uri = uri,
+                prefix = prefix,
+                extension = extension,
+                onProgress = copyToCache.onProgress
+            )
 
-                } else null
+        } else null
 
         val finalUri =
             if (processedFile != null && file == null) {

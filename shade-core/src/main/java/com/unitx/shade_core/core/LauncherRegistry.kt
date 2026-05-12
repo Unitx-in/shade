@@ -27,7 +27,9 @@ internal class LauncherRegistry(
     var onVideoCameraResult: ((Boolean) -> Unit)? = null
     var onVideoGallerySingle: ((Uri?) -> Unit)? = null
     var onVideoGalleryMulti: ((List<Uri>) -> Unit)? = null
-    var onDocumentResult: ((Uri?) -> Unit)? = null
+
+    var onDocumentSingleResult: ((Uri?) -> Unit)? = null
+    var onDocumentMultiResult: ((List<Uri>) -> Unit)? = null
 
     // ── Permission launchers ──────────────────────────────────────────────────
 
@@ -62,7 +64,7 @@ internal class LauncherRegistry(
     val imageGalleryMultiLauncher by lazy {
         registrar.register(
             ActivityResultContracts.PickMultipleVisualMedia(
-                maxItems = config.image?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
+                maxItems = config.image?.gallery?.multiSelect?.maxItems?.coerceAtLeast(2) ?: 2
             )
         ) { uris ->
             onImageGalleryMulti?.invoke(uris)
@@ -88,7 +90,7 @@ internal class LauncherRegistry(
     val videoGalleryMultiLauncher by lazy {
         registrar.register(
             ActivityResultContracts.PickMultipleVisualMedia(
-                maxItems = config.video?.gallery?.maxItems?.coerceAtLeast(2) ?: 2
+                maxItems = config.video?.gallery?.multiSelect?.maxItems?.coerceAtLeast(2) ?: 2
             )
         ) { uris ->
             onVideoGalleryMulti?.invoke(uris)
@@ -97,9 +99,15 @@ internal class LauncherRegistry(
 
     // ── Document picker ───────────────────────────────────────────────────────
 
-    val documentPickerLauncher by lazy {
+    val documentSingleLauncher by lazy {
         registrar.register(ActivityResultContracts.OpenDocument()) { uri ->
-            onDocumentResult?.invoke(uri)
+            onDocumentSingleResult?.invoke(uri)
+        }
+    }
+
+    val documentMultiLauncher by lazy {
+        registrar.register(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            onDocumentMultiResult?.invoke(uris)
         }
     }
 
@@ -119,7 +127,7 @@ internal class LauncherRegistry(
         }
 
         imageConfig?.gallery?.let { gallery ->
-            if (gallery.isMultiSelect) imageGalleryMultiLauncher
+            if (gallery.multiSelect?.enabled == true) imageGalleryMultiLauncher
             else imageGallerySingleLauncher
         }
 
@@ -128,12 +136,13 @@ internal class LauncherRegistry(
         }
 
         videoConfig?.gallery?.let { gallery ->
-            if (gallery.isMultiSelect) videoGalleryMultiLauncher
+            if (gallery.multiSelect?.enabled == true) videoGalleryMultiLauncher
             else videoGallerySingleLauncher
         }
 
-        config.document?.let {
-            documentPickerLauncher
+        config.document?.let { doc ->
+            if (doc.multiSelect?.enabled == true) documentMultiLauncher
+            else documentSingleLauncher
         }
     }
 }

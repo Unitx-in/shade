@@ -2,6 +2,7 @@ package com.unitx.shade_core.compose
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
@@ -137,5 +138,25 @@ internal fun rememberDocumentLauncher(
         }
 
         callback.invoke(result, ShadeError.PickCancelled)
+    }
+}
+
+@Composable
+internal fun rememberMultiDocumentLauncher(
+    enabled: Boolean,
+    callback: ShadeResultHolder,
+): ActivityResultLauncher<Array<String>>? {
+    if (!enabled) return null
+    Log.i("Document", "Multi document launcher registered")
+
+
+    return rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isEmpty()) {
+            callback.onFailure?.invoke(ShadeError.PickCancelled)
+        } else {
+            callback.onResult?.invoke(ShadeResult.Multiple(uris.map { ShadeResult.ShadeMedia(uri = it, file = null) }))
+        }
     }
 }

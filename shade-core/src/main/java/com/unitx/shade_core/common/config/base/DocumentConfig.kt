@@ -1,6 +1,7 @@
 package com.unitx.shade_core.common.config.base
 
 import com.unitx.shade_core.common.config.extend.CacheConfig
+import com.unitx.shade_core.common.config.extend.MultiSelectConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 
@@ -26,11 +27,18 @@ import com.unitx.shade_core.common.result.ShadeResult
  */
 class DocumentConfig {
 
-    internal var onResult: ((ShadeResult.Single) -> Unit)? = null
+    internal var onResult: ((ShadeResult) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
     internal var copyToCache: CacheConfig? = null
-    fun onResult(block: (ShadeResult.Single) -> Unit) {
+    internal var multiSelect: MultiSelectConfig? = null
+
+
+    fun onResult(block: (ShadeResult) -> Unit) {
         onResult = block
+    }
+
+    fun multiSelect(block: MultiSelectConfig.() -> Unit) {
+        multiSelect = MultiSelectConfig().apply(block)
     }
 
     fun onFailure(block: (ShadeError) -> Unit) {

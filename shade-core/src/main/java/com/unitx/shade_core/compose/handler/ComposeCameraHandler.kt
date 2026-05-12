@@ -6,9 +6,9 @@ import android.net.Uri
 import androidx.activity.result.ActivityResultLauncher
 import com.unitx.shade_core.common.CameraTarget
 import com.unitx.shade_core.common.FileHelper
-import com.unitx.shade_core.common.compressor.ImageProcessor
+import com.unitx.shade_core.common.processor.ImageProcessor
 import com.unitx.shade_core.common.PermissionHelper
-import com.unitx.shade_core.common.compressor.VideoProcessor
+import com.unitx.shade_core.common.processor.VideoProcessor
 import com.unitx.shade_core.compose.state.CaptureState
 import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
@@ -145,20 +145,24 @@ internal class ComposeCameraHandler(
     }
 
     fun launchImageCamera() {
-        val (file, uri) = FileHelper.createTempFile(context, "IMG_", ".jpg") ?: run {
-            config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return
+        scope.launch {
+            val (file, uri) = FileHelper.createTempFile(context, "IMG_", ".jpg") ?: run {
+                config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return@launch
+            }
+            captureState.file = file
+            captureState.uri = uri
+            imageCameraLauncher?.launch(uri)
         }
-        captureState.file = file
-        captureState.uri = uri
-        imageCameraLauncher?.launch(uri)
     }
 
     fun launchVideoCamera() {
-        val (file, uri) = FileHelper.createTempFile(context, "VID_", ".mp4") ?: run {
-            config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return
+        scope.launch {
+            val (file, uri) = FileHelper.createTempFile(context, "VID_", ".mp4") ?: run {
+                config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return@launch
+            }
+            captureState.file = file
+            captureState.uri = uri
+            videoCameraLauncher?.launch(uri)
         }
-        captureState.file = file
-        captureState.uri = uri
-        videoCameraLauncher?.launch(uri)
     }
 }

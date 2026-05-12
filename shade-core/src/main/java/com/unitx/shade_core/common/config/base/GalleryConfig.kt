@@ -2,6 +2,7 @@ package com.unitx.shade_core.common.config.base
 
 import com.unitx.shade_core.common.config.extend.CompressionConfig
 import com.unitx.shade_core.common.config.extend.CacheConfig
+import com.unitx.shade_core.common.config.extend.MultiSelectConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 
@@ -33,18 +34,17 @@ class GalleryConfig {
 
     internal var onResult: ((ShadeResult) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
-    internal var isMultiSelect: Boolean = false
+
+    internal var multiSelect: MultiSelectConfig? = null
     internal var copyToCache: CacheConfig? = null
     internal var compress: CompressionConfig? = null
-    internal var maxItems: Int = Int.MAX_VALUE
 
     fun compress(block: CompressionConfig.() -> Unit) {
         compress = CompressionConfig().apply(block)
     }
 
-    fun multiSelect(maxItems: Int = Int.MAX_VALUE) {
-        isMultiSelect = true
-        this.maxItems = maxItems
+    fun multiSelect(block: MultiSelectConfig.() -> Unit) {
+        multiSelect = MultiSelectConfig().apply(block)
     }
 
     fun copyToCache(block: CacheConfig.() -> Unit) {

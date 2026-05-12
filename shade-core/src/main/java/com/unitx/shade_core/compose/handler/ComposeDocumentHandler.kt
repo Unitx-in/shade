@@ -9,6 +9,7 @@ import com.unitx.shade_core.common.result.ShadeResult
 import android.content.Context
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.processor.DocumentProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import com.unitx.shade_core.compose.core.ComposeShadeCore
@@ -16,76 +17,102 @@ import com.unitx.shade_core.compose.core.ComposeShadeCore
 /**
  * Compose-side document handler.
  *
- * Wires PDF and document result callbacks and exposes
- * [handlePdf] / [handleDocument] to [ComposeShadeCore].
+ * Wires single and multi document result callbacks and exposes
+ * [handleDocument] to [ComposeShadeCore].
  */
 internal class ComposeDocumentHandler(
     private val context: Context,
     private val config: ShadeConfig,
-    private val documentLauncher: ActivityResultLauncher<Array<String>>?,
-    documentCallback: ShadeResultHolder,
+    private val documentSingleLauncher: ActivityResultLauncher<Array<String>>?,
+    private val documentMultiLauncher: ActivityResultLauncher<Array<String>>?,
+    documentSingleCallback: ShadeResultHolder,
+    documentMultiCallback: ShadeResultHolder,
     private val scope: CoroutineScope,
 ) {
 
     init {
 
-        // ── Document result ────────────────────────────────────────────────────
+        // ── Document single ────────────────────────────────────────────────────
 
-        documentCallback.onResult = onResult@{ result ->
+        documentSingleCallback.onResult = onResult@{ result ->
 
             val single = result as ShadeResult.Single
             val documentConfig = config.document ?: return@onResult
 
             scope.launch {
 
-                val file = if (documentConfig.copyToCache?.enabled == true) {
+                val processed = DocumentProcessor.process(
+                    context = context,
+                    uri = single.uri,
+                    prefix = "DOC_",
+                    extension = FileHelper.extensionFromUri(context, single.uri),
+                    copyToCache = documentConfig.copyToCache,
+                )
 
-                        FileHelper.copyUriToCache(
-                            context = context,
-                            uri = single.uri,
-                            prefix = "DOC_",
-                            extension = FileHelper.extensionFromUri(
-                                context,
-                                single.uri
-                            ),
-                            onProgress = documentConfig.copyToCache?.onProgress
-                        )
-
-                    } else null
-
-                if (documentConfig.copyToCache?.enabled == true && file == null) {
+                if (documentConfig.copyToCache?.enabled == true && processed.file == null) {
                     documentConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
                     return@launch
                 }
 
-                val finalUri =
-                    if (file != null) {
-                        FileHelper.getUriFromFile(context, file)
-                    } else {
-                        single.uri
-                    }
-
                 documentConfig.onResult?.invoke(
                     ShadeResult.Single(
-                        uri = finalUri,
-                        file = file
+                        uri = processed.uri,
+                        file = processed.file
                     )
                 )
             }
         }
 
-        documentCallback.onFailure = {
+        documentSingleCallback.onFailure = {
+            config.document?.onFailure?.invoke(it)
+        }
+
+        // ── Document multi ─────────────────────────────────────────────────────
+
+        documentMultiCallback.onResult = onResult@{ result ->
+
+            val multiple = result as ShadeResult.Multiple
+            val documentConfig = config.document ?: return@onResult
+
+            scope.launch {
+
+                val items = DocumentProcessor.process(
+                    context = context,
+                    uris = multiple.items.map { it.uri },
+                    prefix = "DOC_",
+                    extensions = multiple.items.map {
+                        FileHelper.extensionFromUri(context, it.uri)
+                    },
+                    copyToCache = documentConfig.copyToCache,
+                )
+
+                if (documentConfig.copyToCache?.enabled == true && items.any { it.file == null }) {
+                    documentConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
+                    return@launch
+                }
+
+                documentConfig.onResult?.invoke(
+                    ShadeResult.Multiple(items)
+                )
+            }
+        }
+
+        documentMultiCallback.onFailure = {
             config.document?.onFailure?.invoke(it)
         }
     }
 
     fun handleDocument(action: ShadeAction.Document) {
-        config.document ?: return
+        val documentConfig = config.document ?: return
         val mimes = action.mimeTypes
             .map { it.value }
             .takeIf { it.isNotEmpty() }
             ?.toTypedArray()
             ?: DocumentMimeType.ALL_VALUE_TYPED_ARRAY
-        documentLauncher?.launch(mimes)
+
+        if (documentConfig.multiSelect?.enabled == true)
+            documentMultiLauncher?.launch(mimes)
+        else
+            documentSingleLauncher?.launch(mimes)
     }
 }
