@@ -7,7 +7,7 @@ package com.unitx.shade_core.common
  * requests, allowing the system to prepare the correct camera mode and
  * handle the resulting output accordingly.
  */
-enum class CameraTarget {
+internal enum class CameraTarget {
     IMAGE,
     VIDEO
 }

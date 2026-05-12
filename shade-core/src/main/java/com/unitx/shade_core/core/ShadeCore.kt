@@ -22,7 +22,7 @@ import kotlinx.coroutines.cancel
  *
  * Call [cancel] when the host is destroyed to clean up any in-flight work.
  */
-open class ShadeCore(
+open class ShadeCore internal constructor(
     private val registrar: ShadeRegistrar,
     private val config: ShadeConfig
 ) {

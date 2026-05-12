@@ -19,42 +19,51 @@ import com.unitx.shade_core.core.ShadeCore
 /**
  * Composable hook that creates and remembers a [ShadeCore] instance.
  *
- * **Only launchers for configured media types are registered.**
- * Each [rememberLauncherForActivityResult] call is gated on whether the
- * corresponding config block is present. Since [ShadeConfig] is built
- * once inside `remember { }` and never mutated, these conditions are
- * stable for the entire lifetime of the composition and will never flip
- * between recompositions.
+ * Call this once at the top of your screen-level composable and use the
+ * returned [ShadeCore] to launch any configured media action.
  *
- * All result wiring and permission logic lives in the three handlers —
- * [ComposeCameraHandler], [ComposeGalleryHandler], [ComposeDocumentHandler].
- * [rememberShade] only registers launchers and assembles them.
+ * Only launchers for configured media types are registered — unused blocks
+ * add no overhead, permissions, or launchers.
  *
  * ```kotlin
  * val shade = rememberShade {
  *     image {
  *         camera {
- *             onResult { result -> viewModel.onImageCaptured(result.file, result.uri) }
+ *             compress { enabled = true; quality = 80 }
+ *             onResult { result -> viewModel.onImage(result) }
  *             onFailure { error -> viewModel.onError(error) }
  *         }
  *         gallery {
- *             multiSelect(maxItems = 5)
- *             onResult { result ->
- *                 when (result) {
- *                     is ShadeResult.Single   -> viewModel.addImage(result.uri)
- *                     is ShadeResult.Multiple -> viewModel.addImages(result.uris)
- *                     else -> Unit
- *                 }
- *             }
+ *             multiSelect { enabled = true; maxItems = 5 }
+ *             onResult { result -> viewModel.onImages(result) }
  *             onFailure { error -> viewModel.onError(error) }
  *         }
  *     }
- *     pdf {
- *         onResult { result -> viewModel.onPdfPicked(result.uri, result.file!!) }
+ *     video {
+ *         gallery {
+ *             onResult { result -> viewModel.onVideo(result) }
+ *             onFailure { error -> viewModel.onError(error) }
+ *         }
+ *     }
+ *     document {
+ *         copyToCache { enabled = true }
+ *         onResult { result -> viewModel.onDocument(result) }
  *         onFailure { error -> viewModel.onError(error) }
  *     }
  * }
+ *
+ * Button(onClick = { shade.launch(ShadeAction.Image.Camera) }) {
+ *     Text("Take Photo")
+ * }
  * ```
+ *
+ * @param block DSL configuration block. Built once and stable for the lifetime
+ * of the composition — do not reference mutable state inside it.
+ * @return A remembered [ShadeCore] instance tied to the current composition.
+ *
+ * @see ShadeConfig
+ * @see ShadeCore
+ * @see ShadeAction
  */
 @Composable
 fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {

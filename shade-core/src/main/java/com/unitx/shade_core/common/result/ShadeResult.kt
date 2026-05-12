@@ -4,29 +4,14 @@ import android.net.Uri
 import java.io.File
 
 /**
- * Unified result type returned by all Shade media operations.
+ * Unified result type returned by all Shade operations.
  *
- * Every action yields exactly one of these variants so callers never
- * have to deal with mixed (File, Uri) / Uri-only callback signatures.
- *
- * Usage in DSL:
- * ```
- * image {
- *     camera {
- *         onResult { result ->
- *             val file = (result as ShadeResult.Captured).file
- *             val uri  = result.uri
- *         }
- *     }
- *     gallery {
- *         multiSelect(maxItems = 5)
- *         onResult { result ->
- *             when (result) {
- *                 is ShadeResult.Single   -> load(result.uri)
- *                 is ShadeResult.Multiple -> result.uris.forEach { load(it) }
- *                 else -> Unit
- *             }
- *         }
+ * ```kotlin
+ * onResult { result ->
+ *     when (result) {
+ *         is ShadeResult.Captured  -> use(result.file, result.uri)
+ *         is ShadeResult.Single    -> use(result.uri, result.file)
+ *         is ShadeResult.Multiple  -> result.items.forEach { use(it.uri, it.file) }
  *     }
  * }
  * ```
@@ -34,9 +19,10 @@ import java.io.File
 sealed class ShadeResult {
 
     /**
-     * A single media item chosen from a gallery / document picker.
-     * [file] is non-null only when Shade had to copy the content to a
-     * cache file (e.g. PDF / document — so the caller has a stable path).
+     * A single item from a gallery or document picker.
+     *
+     * [file] is non-null only when `copyToCache` or `compress` was enabled.
+     * Without either, only [uri] is available.
      */
     data class Single(
         val uri: Uri,
@@ -44,20 +30,29 @@ sealed class ShadeResult {
     ) : ShadeResult()
 
     /**
-     * Multiple media items returned from a multi-select gallery pick.
+     * Multiple items from a multi-select gallery or document pick.
+     *
+     * Each [ShadeMedia] item follows the same [Single] contract —
+     * [ShadeMedia.file] is non-null only when `copyToCache` or `compress` was enabled.
      */
     data class Multiple(
         val items: List<ShadeMedia>
     ) : ShadeResult()
 
+    /**
+     * A single media or document item within a [Multiple] result.
+     *
+     * [file] is non-null only when `copyToCache` or `compress` was enabled.
+     */
     data class ShadeMedia(
         val uri: Uri,
-        val file: File? = null  // non-null only when copyToCache = true
+        val file: File? = null
     )
 
     /**
-     * An item that was captured by the device camera (image or video).
-     * Both [file] and [uri] are always non-null.
+     * An item captured by the device camera (image or video).
+     *
+     * Both [file] and [uri] are always non-null for camera results.
      */
     data class Captured(
         val file: File,

@@ -5,49 +5,36 @@ import com.unitx.shade_core.common.config.scope.ImageScope
 import com.unitx.shade_core.common.config.scope.VideoScope
 
 /**
- * Root DSL configuration block for Shade.
+ * Root DSL configuration for Shade. Passed to `rememberShade { }` or `Shade.with(this) { }`.
  *
- * Pass this to [Shade.with] to describe every media interaction your
- * screen needs. You only need to configure the types you actually use.
+ * Configure only the media types you need — unused blocks are not registered,
+ * so no unnecessary permissions or launchers are created.
  *
  * ```kotlin
- * shade = Shade.with(fragment = this) {
- *
+ * val shade = rememberShade {
  *     image {
- *         camera {
- *             onResult { result -> }
- *             onFailure { error -> }
- *         }
- *         gallery {
- *             multiSelect(maxItems = 4)
- *             onResult { result -> }
- *             onFailure { error -> }
- *         }
+ *         camera { onResult { } }
+ *         gallery { onResult { } }
  *     }
- *
  *     video {
- *         camera {
- *             onResult { result -> }
- *             onFailure { error -> }
- *         }
  *         gallery {
- *             onResult { result -> }
- *             onFailure { error -> }
+ *             multiSelect { enabled = true }
+ *             onResult { }
  *         }
  *     }
- *
- *     pdf {
- *         onResult { result -> }
- *         onFailure { error -> }
- *     }
- *
  *     document {
- *         copyToCache = true
- *         onResult { result -> }
- *         onFailure { error -> }
+ *         copyToCache { enabled = true }
+ *         onResult { }
  *     }
  * }
+ *
+ * shade.launch(ShadeAction.Image.Camera)
  * ```
+ *
+ * @see ImageScope
+ * @see VideoScope
+ * @see DocumentConfig
+ * @see ShadeAction
  */
 class ShadeConfig {
 
@@ -55,14 +42,17 @@ class ShadeConfig {
     internal var video: VideoScope? = null
     internal var document: DocumentConfig? = null
 
+    /** Configures image camera capture and/or gallery picking. */
     fun image(block: ImageScope.() -> Unit) {
         image = ImageScope().apply(block)
     }
 
+    /** Configures video camera capture and/or gallery picking. */
     fun video(block: VideoScope.() -> Unit) {
         video = VideoScope().apply(block)
     }
 
+    /** Configures document picking. MIME types are specified at launch via [ShadeAction.Document]. */
     fun document(block: DocumentConfig.() -> Unit) {
         document = DocumentConfig().apply(block)
     }

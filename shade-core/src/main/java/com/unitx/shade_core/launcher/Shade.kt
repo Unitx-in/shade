@@ -8,69 +8,37 @@ import com.unitx.shade_core.registrar.ActivityRegistrar
 import com.unitx.shade_core.registrar.FragmentRegistrar
 
 /**
- * Entry point for **XML / Fragment and Activity** based screens.
+ * Entry point for Activity and Fragment based screens.
+ * For Compose, use `rememberShade { }` instead.
  *
- * For Compose, use `rememberShade { }` from the `shade-compose` module instead.
- *
- * ## Fragment usage
- *
+ * ## Fragment
  * ```kotlin
- * class UploadFragment : Fragment() {
- *
- *     private val shade by lazy {
- *         Shade.with(fragment = this) {
- *             image {
- *                 camera {
- *                     onResult { result -> viewModel.onImageCaptured(result.file, result.uri) }
- *                     onFailure { error -> showError(error) }
- *                 }
- *                 gallery {
- *                     multiSelect(maxItems = 5)
- *                     onResult { result ->
- *                         when (result) {
- *                             is ShadeResult.Single   -> viewModel.addImage(result.uri)
- *                             is ShadeResult.Multiple -> viewModel.addImages(result.uris)
- *                             else -> Unit
- *                         }
- *                     }
- *                     onFailure { error -> showError(error) }
- *                 }
- *             }
- *         }
- *     }
- * }
- * ```
- *
- * ## Activity usage
- *
- * ```kotlin
- * class UploadActivity : ComponentActivity() {
- *
- *     // Must be initialised before onCreate() returns — do NOT use lazy here.
- *     // Launcher registration must happen before the activity reaches STARTED state.
- *     private val shade = Shade.with(activity = this) {
+ * private val shade by lazy {
+ *     Shade.with(fragment = this) {
  *         image {
  *             camera {
- *                 onResult { result -> viewModel.onImageCaptured(result.file, result.uri) }
- *                 onFailure { error -> showError(error) }
+ *                 onResult { result -> }
+ *                 onFailure { error -> }
  *             }
  *         }
- *         pdf {
- *             onResult { result -> viewModel.onPdfPicked(result.uri, result.file!!) }
- *             onFailure { error -> showError(error) }
- *         }
- *     }
- *
- *     override fun onCreate(savedInstanceState: Bundle?) {
- *         super.onCreate(savedInstanceState)
- *         binding.btnCamera.setOnClickListener { shade.launch(ShadeAction.Image.Camera) }
- *         binding.btnPdf.setOnClickListener    { shade.launch(ShadeAction.Pdf) }
  *     }
  * }
  * ```
  *
- * ## Manifest — FileProvider (required for camera capture)
+ * ## Activity
+ * ```kotlin
+ * // ✅ Must be a class-level property — NOT inside onCreate or by lazy
+ * private val shade = Shade.with(activity = this) {
+ *     image {
+ *         gallery {
+ *             onResult { result -> }
+ *             onFailure { error -> }
+ *         }
+ *     }
+ * }
+ * ```
  *
+ * ## FileProvider (required for camera)
  * ```xml
  * <provider
  *     android:name="androidx.core.content.FileProvider"
@@ -86,13 +54,8 @@ import com.unitx.shade_core.registrar.FragmentRegistrar
 object Shade {
 
     /**
-     * Creates a [ShadeCore] instance bound to [fragment].
-     *
-     * Must be called before the fragment reaches STARTED state.
-     * A `by lazy` property at the fragment class level is the recommended pattern.
-     *
-     * @param fragment The fragment that hosts the media flows.
-     * @param block    DSL configuration block.
+     * Creates a [ShadeCore] bound to [fragment].
+     * Safe to use with `by lazy` at the fragment class level.
      */
     fun with(fragment: Fragment, block: ShadeConfig.() -> Unit): ShadeCore {
         val config = ShadeConfig().apply(block)
@@ -101,22 +64,10 @@ object Shade {
     }
 
     /**
-     * Creates a [ShadeCore] instance bound to [activity].
+     * Creates a [ShadeCore] bound to [activity].
      *
-     * **Must be initialised as a class-level property, not inside `onCreate`.**
-     * Launcher registration must happen before the activity reaches STARTED state,
-     * so `by lazy` is not safe here — the property must be eagerly initialised:
-     *
-     * ```kotlin
-     * // ✅ correct — initialised at property declaration time
-     * private val shade = Shade.with(activity = this) { ... }
-     *
-     * // ❌ wrong — lazy defers until first access, which may be too late
-     * private val shade by lazy { Shade.with(activity = this) { ... } }
-     * ```
-     *
-     * @param activity The [ComponentActivity] that hosts the media flows.
-     * @param block    DSL configuration block.
+     * Must be initialised as a class-level property before `onCreate` returns.
+     * `by lazy` is not safe here.
      */
     fun with(activity: ComponentActivity, block: ShadeConfig.() -> Unit): ShadeCore {
         val config = ShadeConfig().apply(block)

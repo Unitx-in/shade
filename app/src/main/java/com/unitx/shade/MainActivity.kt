@@ -19,9 +19,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.unitx.shade.ui.theme.ShadeTheme
 import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.action.ShadeAction
+import com.unitx.shade_core.common.compressor.CompressFormat
 import com.unitx.shade_core.common.config.extend.ProgressConfig
 import com.unitx.shade_core.common.result.ShadeResult
 import com.unitx.shade_core.compose.rememberShade
+import com.unitx.shade_core.core.ShadeCore
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +39,7 @@ class MainActivity : ComponentActivity() {
                     ) {
 
                         val context = LocalContext.current
+
                         val shade = rememberShade {
                             video {
                                 camera {
@@ -45,6 +48,7 @@ class MainActivity : ComponentActivity() {
                                         quality = 80
                                         maxWidth = 1024
                                         maxHeight = 1024
+                                        format = CompressFormat.PNG
                                         onProgress = { progressConfig->
                                             progressConfig as ProgressConfig.Compressing
                                             Log.i("Compressing", "progress: ${progressConfig.percent} , file number ${progressConfig.fileNumber}")
