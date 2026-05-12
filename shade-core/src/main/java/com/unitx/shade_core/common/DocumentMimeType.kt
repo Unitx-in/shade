@@ -12,6 +12,7 @@ enum class DocumentMimeType(val value: String) {
     PPTX("application/vnd.openxmlformats-officedocument.presentationml.presentation"),
     TXT("text/plain"),
     CSV("text/csv"),
+    PDF("application/pdf"),
     RTF("application/rtf");
 
     companion object {

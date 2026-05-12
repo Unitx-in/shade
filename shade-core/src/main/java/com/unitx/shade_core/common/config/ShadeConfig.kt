@@ -1,7 +1,6 @@
 package com.unitx.shade_core.common.config
 
 import com.unitx.shade_core.common.config.base.DocumentConfig
-import com.unitx.shade_core.common.config.base.PdfConfig
 import com.unitx.shade_core.common.config.scope.ImageScope
 import com.unitx.shade_core.common.config.scope.VideoScope
 
@@ -54,7 +53,6 @@ class ShadeConfig {
 
     internal var image: ImageScope? = null
     internal var video: VideoScope? = null
-    internal var pdf: PdfConfig? = null
     internal var document: DocumentConfig? = null
 
     fun image(block: ImageScope.() -> Unit) {
@@ -63,10 +61,6 @@ class ShadeConfig {
 
     fun video(block: VideoScope.() -> Unit) {
         video = VideoScope().apply(block)
-    }
-
-    fun pdf(block: PdfConfig.() -> Unit) {
-        pdf = PdfConfig().apply(block)
     }
 
     fun document(block: DocumentConfig.() -> Unit) {

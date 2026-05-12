@@ -63,26 +63,27 @@ class MainActivity : ComponentActivity() {
                                     }
                                     onResult { multiple->
                                         multiple as ShadeResult.Multiple
-                                        Toast.makeText(context, "Images selected: ${multiple.items.count()}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-
-                                pdf {
-                                    onResult {
-
+                                        Toast.makeText(context, "Images selected: ${multiple.items.map { it.file?.absolutePath }}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
 
                                 document {
-                                    onResult {
-
+                                    copyToCache {
+                                        enabled = true
+                                        onProgress = {
+                                            it as ProgressConfig.Copying
+                                            Log.i("Document", "progress: ${it.percent}")
+                                        }
+                                    }
+                                    onResult { result->
+                                        Log.i("Document", "${result.uri} file: ${result.file?.absolutePath}")
                                     }
                                 }
                             }
                         }
 
                         LaunchedEffect(Unit) {
-                            shade.launch(ShadeAction.Document())
+                            shade.launch(ShadeAction.Image.Gallery)
                         }
                     }
                 }

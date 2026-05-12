@@ -144,15 +144,6 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
             callback = videoGalleryMultiCallback,
         )
 
-// ── PDF picker ────────────────────────────────────────────────────────────
-
-    val pdfCallback = remember { ShadeResultHolder() }
-
-    val pdfLauncher = rememberDocumentLauncher(
-            enabled = config.pdf != null,
-            callback = pdfCallback,
-        )
-
 // ── Document picker ───────────────────────────────────────────────────────
 
     val documentCallback = remember { ShadeResultHolder() }
@@ -197,9 +188,7 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
         val documentHandler = ComposeDocumentHandler(
             context = context,
             config = config,
-            pdfLauncher = pdfLauncher,
             documentLauncher = documentLauncher,
-            pdfCallback = pdfCallback,
             documentCallback = documentCallback,
             scope = scope
         )

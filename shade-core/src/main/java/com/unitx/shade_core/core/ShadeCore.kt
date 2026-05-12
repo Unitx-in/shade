@@ -66,7 +66,6 @@ open class ShadeCore(
             is ShadeAction.Image.Gallery -> galleryHandler.handleImageGallery()
             is ShadeAction.Video.Camera -> cameraHandler.handleVideoCamera()
             is ShadeAction.Video.Gallery -> galleryHandler.handleVideoGallery()
-            is ShadeAction.Pdf -> documentHandler.handlePdf()
             is ShadeAction.Document -> documentHandler.handleDocument(action)
         }
     }

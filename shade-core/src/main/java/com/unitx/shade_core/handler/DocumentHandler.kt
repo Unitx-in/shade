@@ -29,19 +29,6 @@ internal class DocumentHandler(
 ) {
 
     init {
-        registry.onPdfResult = onPdfResult@{ uri ->
-            val pdfConfig = config.pdf ?: return@onPdfResult
-
-            handleDocumentResult(
-                uri = uri,
-                cacheConfig = null,
-                prefix = "PDF_",
-                extension = { ".pdf" },
-                onFailure = pdfConfig.onFailure,
-                onResult = pdfConfig.onResult
-            )
-        }
-
         registry.onDocumentResult = onDocumentResult@{ uri ->
             val docConfig = config.document ?: return@onDocumentResult
 
@@ -101,11 +88,6 @@ internal class DocumentHandler(
                 )
             )
         }
-    }
-
-    fun handlePdf() {
-        config.pdf ?: return
-        registry.pdfPickerLauncher.launch(arrayOf("application/pdf"))
     }
 
     fun handleDocument(action: ShadeAction.Document) {

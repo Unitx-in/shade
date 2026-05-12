@@ -27,7 +27,6 @@ internal class LauncherRegistry(
     var onVideoCameraResult: ((Boolean) -> Unit)? = null
     var onVideoGallerySingle: ((Uri?) -> Unit)? = null
     var onVideoGalleryMulti: ((List<Uri>) -> Unit)? = null
-    var onPdfResult: ((Uri?) -> Unit)? = null
     var onDocumentResult: ((Uri?) -> Unit)? = null
 
     // ── Permission launchers ──────────────────────────────────────────────────
@@ -96,14 +95,6 @@ internal class LauncherRegistry(
         }
     }
 
-    // ── PDF picker ────────────────────────────────────────────────────────────
-
-    val pdfPickerLauncher by lazy {
-        registrar.register(ActivityResultContracts.OpenDocument()) { uri ->
-            onPdfResult?.invoke(uri)
-        }
-    }
-
     // ── Document picker ───────────────────────────────────────────────────────
 
     val documentPickerLauncher by lazy {
@@ -139,10 +130,6 @@ internal class LauncherRegistry(
         videoConfig?.gallery?.let { gallery ->
             if (gallery.isMultiSelect) videoGalleryMultiLauncher
             else videoGallerySingleLauncher
-        }
-
-        config.pdf?.let {
-            pdfPickerLauncher
         }
 
         config.document?.let {

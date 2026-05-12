@@ -22,51 +22,12 @@ import com.unitx.shade_core.compose.core.ComposeShadeCore
 internal class ComposeDocumentHandler(
     private val context: Context,
     private val config: ShadeConfig,
-    private val pdfLauncher: ActivityResultLauncher<Array<String>>?,
     private val documentLauncher: ActivityResultLauncher<Array<String>>?,
-    pdfCallback: ShadeResultHolder,
     documentCallback: ShadeResultHolder,
     private val scope: CoroutineScope,
 ) {
 
     init {
-
-        // ── PDF result ─────────────────────────────────────────────────────────
-
-        pdfCallback.onResult = onResult@{ result ->
-
-            val single = result as ShadeResult.Single
-            val pdfConfig = config.pdf ?: return@onResult
-
-            scope.launch {
-
-                val file = FileHelper.copyUriToCache(
-                    context = context,
-                    uri = single.uri,
-                    prefix = "PDF_",
-                    extension = ".pdf",
-                    onProgress = null, // Caching is not available for pdf
-                )
-
-                if (file == null) {
-                    pdfConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
-                    return@launch
-                }
-
-                val finalUri = FileHelper.getUriFromFile(context, file)
-
-                pdfConfig.onResult?.invoke(
-                    ShadeResult.Single(
-                        uri = finalUri,
-                        file = file
-                    )
-                )
-            }
-        }
-
-        pdfCallback.onFailure = {
-            config.pdf?.onFailure?.invoke(it)
-        }
 
         // ── Document result ────────────────────────────────────────────────────
 
@@ -116,11 +77,6 @@ internal class ComposeDocumentHandler(
         documentCallback.onFailure = {
             config.document?.onFailure?.invoke(it)
         }
-    }
-
-    fun handlePdf() {
-        config.pdf ?: return
-        pdfLauncher?.launch(arrayOf("application/pdf"))
     }
 
     fun handleDocument(action: ShadeAction.Document) {

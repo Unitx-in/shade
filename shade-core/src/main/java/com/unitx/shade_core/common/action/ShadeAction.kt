@@ -23,7 +23,5 @@ sealed class ShadeAction {
         object Gallery : Video()
     }
 
-    object Pdf : ShadeAction()
-
     data class Document(val mimeTypes: List<DocumentMimeType> = DocumentMimeType.ALL_ENTRY_LIST) : ShadeAction()
 }
