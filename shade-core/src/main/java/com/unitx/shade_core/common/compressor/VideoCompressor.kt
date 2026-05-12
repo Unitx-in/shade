@@ -1,15 +1,17 @@
 package com.unitx.shade_core.common.compressor
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.otaliastudios.transcoder.Transcoder
+import com.otaliastudios.transcoder.TranscoderListener
+import com.otaliastudios.transcoder.resize.AtMostResizer
+import com.otaliastudios.transcoder.resize.PassThroughResizer
+import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy
+import com.unitx.shade_core.common.config.extend.ProgressConfig
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
-/**
- * Lightweight video compressor abstraction.
- *
- * Currently delegates to FFmpeg-based compression.
- */
 internal object VideoCompressor {
 
     data class CompressionParams(
@@ -20,103 +22,68 @@ internal object VideoCompressor {
         val keyFrameInterval: Int = 2
     )
 
-    /**
-     * Compresses a video file.
-     *
-     * Returns compressed file or null on failure.
-     */
     suspend fun compress(
-        input: File,
-        params: CompressionParams = CompressionParams()
-    ): File? = withContext(Dispatchers.IO) {
-
-        try {
-
-            val output = File.createTempFile(
-                "VID_CMP_",
-                ".mp4",
-                input.parentFile
+        inputs: List<File>,
+        params: CompressionParams = CompressionParams(),
+        onProgress: ((ProgressConfig.Compressing) -> Unit)? = null,
+    ): List<File?> {
+        return inputs.mapIndexed { index, file ->
+            compress(
+                input = file,
+                params = params,
+                onProgress = onProgress,
+                fileNumber = index + 1
             )
-
-            val success = compressWithFfmpeg(
-                input = input,
-                output = output,
-                params = params
-            )
-
-            if (success) output
-            else {
-                output.delete()
-                null
-            }
-
-        } catch (e: Exception) {
-
-            if (e is CancellationException) {
-                throw e
-            }
-
-            e.printStackTrace()
-            null
         }
     }
 
-    /**
-     * FFmpeg compression implementation.
-     *
-     * NOTE:
-     * This assumes FFmpeg is available in your project.
-     * Replace implementation based on your FFmpeg library.
-     */
-    private fun compressWithFfmpeg(
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun compress(
         input: File,
-        output: File,
-        params: CompressionParams
-    ): Boolean {
+        params: CompressionParams = CompressionParams(),
+        onProgress: ((ProgressConfig.Compressing) -> Unit)? = null,
+        fileNumber: Int = 1,
+    ): File? = suspendCancellableCoroutine { continuation ->
 
-        return try {
+        val output = File.createTempFile("VID_CMP_", ".mp4", input.parentFile)
 
-            val scaleFilter = buildString {
-
-                params.maxWidth?.let { maxWidth ->
-
-                    append(
-                        "scale='min($maxWidth,iw)':-2"
+        val future = Transcoder.into(output.absolutePath)
+            .addDataSource(input.absolutePath)
+            .setVideoTrackStrategy(
+                DefaultVideoStrategy.Builder()
+                    .addResizer(
+                        if (params.maxWidth != null)
+                            AtMostResizer(params.maxWidth)
+                        else PassThroughResizer()
                     )
+                    .bitRate(params.videoBitrate.toLong())
+                    .frameRate(params.frameRate)
+                    .keyFrameInterval(params.keyFrameInterval.toFloat())
+                    .build()
+            )
+            .setListener(object : TranscoderListener {
+                override fun onTranscodeProgress(progress: Double) {
+                    val percent = (progress * 100).toInt().coerceIn(0, 99)
+                    onProgress?.invoke(ProgressConfig.Compressing(percent, fileNumber))
                 }
-            }
+                override fun onTranscodeCompleted(successCode: Int) {
+                    onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber))
+                    continuation.resume(output)
+                }
+                override fun onTranscodeCanceled() {
+                    output.delete()
+                    continuation.resume(null)
+                }
+                override fun onTranscodeFailed(exception: Throwable) {
+                    output.delete()
+                    continuation.resumeWithException(exception)
+                }
+            })
+            .transcode()
 
-            val command = mutableListOf(
-                "ffmpeg",
-                "-i", input.absolutePath,
-                "-c:v", "libx264",
-                "-b:v", params.videoBitrate.toString(),
-                "-r", params.frameRate.toString(),
-                "-g", (params.keyFrameInterval * params.frameRate).toString(),
-            )
-
-            if (scaleFilter.isNotBlank()) {
-                command += listOf("-vf", scaleFilter)
-            }
-
-            command += listOf(
-                "-c:a", "copy",
-                "-y",
-                output.absolutePath
-            )
-
-            val process = ProcessBuilder(command)
-                .redirectErrorStream(true)
-                .start()
-
-            val exitCode = process.waitFor()
-
-            exitCode == 0
-
-        } catch (e: Exception) {
-
-            e.printStackTrace()
-            false
+        continuation.invokeOnCancellation {
+            future.cancel(true)
+            output.delete()
         }
     }
 }

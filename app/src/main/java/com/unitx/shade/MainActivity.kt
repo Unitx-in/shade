@@ -38,13 +38,17 @@ class MainActivity : ComponentActivity() {
 
                         val context = LocalContext.current
                         val shade = rememberShade {
-                            image {
+                            video {
                                 camera {
                                     compress {
                                         enabled = true
                                         quality = 80
                                         maxWidth = 1024
                                         maxHeight = 1024
+                                        onProgress = { progressConfig->
+                                            progressConfig as ProgressConfig.Compressing
+                                            Log.i("Compressing", "progress: ${progressConfig.percent} , file number ${progressConfig.fileNumber}")
+                                        }
                                     }
                                     onResult { captured->
                                         Toast.makeText(context, "Image captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
@@ -92,7 +96,7 @@ class MainActivity : ComponentActivity() {
 
                         LaunchedEffect(Unit) {
 //                            shade.launch(ShadeAction.Document(listOf(DocumentMimeType.PDF)))
-                            shade.launch(ShadeAction.Image.Camera)
+                            shade.launch(ShadeAction.Video.Camera)
                         }
                     }
                 }

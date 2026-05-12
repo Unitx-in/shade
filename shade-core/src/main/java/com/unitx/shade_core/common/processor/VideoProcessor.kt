@@ -114,6 +114,39 @@ internal object VideoProcessor {
 
     private suspend fun compressFromUri(
         context: Context,
+        uris: List<Uri>,
+        prefix: String,
+        extension: String,
+        compression: CompressionConfig
+    ): List<File?> = withContext(Dispatchers.IO) {
+
+        val sourceFiles = uris.map { uri ->
+            val sourceFile = File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(sourceFile).use { input.copyTo(it) }
+            }
+            sourceFile
+        }
+
+        try {
+            VideoCompressor.compress(
+                inputs = sourceFiles,
+                params = VideoCompressor.CompressionParams(
+                    videoBitrate = compression.videoBitrate,
+                    frameRate = compression.frameRate,
+                    maxWidth = compression.maxWidth,
+                    maxHeight = compression.maxHeight,
+                    keyFrameInterval = compression.keyFrameInterval
+                ),
+                onProgress = compression.onProgress
+            )
+        } finally {
+            sourceFiles.forEach { it.delete() }
+        }
+    }
+
+    private suspend fun compressFromUri(
+        context: Context,
         uri: Uri,
         prefix: String,
         extension: String,
@@ -121,21 +154,15 @@ internal object VideoProcessor {
     ): File? {
 
         val sourceFile = withContext(Dispatchers.IO) {
-            File.createTempFile(
-                "${prefix}SRC_",
-                extension,
-                context.cacheDir
-            )
+            File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
         }
 
         try {
 
             context.contentResolver.openInputStream(uri)?.use { input ->
-
                 FileOutputStream(sourceFile).use { output ->
                     input.copyTo(output)
                 }
-
             } ?: return null
 
             return VideoCompressor.compress(
@@ -146,29 +173,12 @@ internal object VideoProcessor {
                     maxWidth = compression.maxWidth,
                     maxHeight = compression.maxHeight,
                     keyFrameInterval = compression.keyFrameInterval
-                )
+                ),
+                onProgress = compression.onProgress
             )
 
         } finally {
             sourceFile.delete()
-        }
-    }
-
-    private suspend fun compressFromUri(
-        context: Context,
-        uris: List<Uri>,
-        prefix: String,
-        extension: String,
-        compression: CompressionConfig
-    ): List<File?> {
-        return uris.map { uri ->
-            compressFromUri(
-                context = context,
-                uri = uri,
-                prefix = prefix,
-                extension = extension,
-                compression = compression
-            )
         }
     }
 }

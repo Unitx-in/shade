@@ -46,4 +46,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    implementation("io.deepmedia.community:transcoder-android:0.11.2")
 }

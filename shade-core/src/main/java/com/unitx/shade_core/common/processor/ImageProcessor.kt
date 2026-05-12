@@ -6,6 +6,7 @@ import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.compressor.ImageCompressor
 import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.config.extend.ProgressConfig
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -74,7 +75,7 @@ internal object ImageProcessor {
                 context = context,
                 uris = uris,
                 prefix = prefix,
-                compression = compression
+                compression = compression,
             )
 
         } else files ?: if (copyToCache?.enabled == true) {
@@ -113,7 +114,7 @@ internal object ImageProcessor {
         context: Context,
         uri: Uri,
         prefix: String,
-        compression: CompressionConfig
+        compression: CompressionConfig,
     ): File? {
 
         val sourceFile = withContext(Dispatchers.IO) {
@@ -140,7 +141,8 @@ internal object ImageProcessor {
                 quality = compression.quality,
                 maxWidth = compression.maxWidth,
                 maxHeight = compression.maxHeight,
-                outputFormat = compression.format
+                outputFormat = compression.format,
+                onProgress = compression.onProgress
             )
 
         } finally {
@@ -152,15 +154,29 @@ internal object ImageProcessor {
         context: Context,
         uris: List<Uri>,
         prefix: String,
-        compression: CompressionConfig
-    ): List<File?> {
-        return uris.map { uri->
-            compressFromUri(
+        compression: CompressionConfig,
+    ): List<File?> = withContext(Dispatchers.IO) {
+
+        val sourceFiles = uris.map { uri ->
+            val sourceFile = File.createTempFile("${prefix}SRC_", ".tmp", context.cacheDir)
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(sourceFile).use { input.copyTo(it) }
+            }
+            sourceFile
+        }
+
+        try {
+            ImageCompressor.compress(
                 context = context,
-                uri = uri,
-                prefix = prefix,
-                compression = compression
+                inputs = sourceFiles,
+                quality = compression.quality,
+                maxWidth = compression.maxWidth,
+                maxHeight = compression.maxHeight,
+                onProgress = compression.onProgress,
+                outputFormat = compression.format,
             )
+        } finally {
+            sourceFiles.forEach { it.delete() }
         }
     }
 }

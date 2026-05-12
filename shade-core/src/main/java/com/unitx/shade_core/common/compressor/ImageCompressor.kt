@@ -7,6 +7,7 @@ import android.graphics.Matrix
 import androidx.core.graphics.scale
 import androidx.exifinterface.media.ExifInterface
 import com.unitx.shade_core.common.compressor.CompressFormat
+import com.unitx.shade_core.common.config.extend.ProgressConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,24 +20,37 @@ import java.io.FileOutputStream
  */
 internal object ImageCompressor {
 
-    /**
-     * Compresses an image file.
-     *
-     * @param context       Application context (used for cache directory)
-     * @param input         Original image file
-     * @param quality       JPEG quality (0–100). Ignored for PNG output.
-     * @param maxWidth      Maximum allowed width (preserves aspect ratio). `null` = no limit.
-     * @param maxHeight     Maximum allowed height (preserves aspect ratio). `null` = no limit.
-     * @param outputFormat  Desired output format (JPEG or PNG).
-     *
-     * @return Compressed file, or `null` if compression failed.
-     */
+    suspend fun compress(
+        context: Context,
+        inputs: List<File>,
+        quality: Int,
+        maxWidth: Int?,
+        maxHeight: Int?,
+        onProgress: ((ProgressConfig.Compressing) -> Unit)?,
+        outputFormat: CompressFormat = CompressFormat.JPEG
+    ): List<File?> {
+        return inputs.mapIndexed { index, file ->
+            compress(
+                context = context,
+                input = file,
+                quality = quality,
+                maxWidth = maxWidth,
+                maxHeight = maxHeight,
+                onProgress = onProgress,
+                fileNumber = index + 1,
+                outputFormat = outputFormat
+            )
+        }
+    }
+
     suspend fun compress(
         context: Context,
         input: File,
         quality: Int,
         maxWidth: Int?,
         maxHeight: Int?,
+        onProgress: ((ProgressConfig.Compressing) -> Unit)?,
+        fileNumber: Int = 1,
         outputFormat: CompressFormat = CompressFormat.JPEG
     ): File? = withContext(Dispatchers.IO) {
 
@@ -48,26 +62,18 @@ internal object ImageCompressor {
                 inJustDecodeBounds = true
             }
 
-            BitmapFactory.decodeFile(
-                input.absolutePath,
-                boundsOptions
-            )
+            BitmapFactory.decodeFile(input.absolutePath, boundsOptions)
 
             val originalWidth = boundsOptions.outWidth
             val originalHeight = boundsOptions.outHeight
 
-            if (originalWidth <= 0 || originalHeight <= 0) {
-                return@withContext null
-            }
+            if (originalWidth <= 0 || originalHeight <= 0) return@withContext null
+
+            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(10, fileNumber)) }
 
             // ── Calculate sample size ─────────────────────────────────────────
 
-            val sampleSize = calculateSampleSize(
-                originalWidth,
-                originalHeight,
-                maxWidth,
-                maxHeight
-            )
+            val sampleSize = calculateSampleSize(originalWidth, originalHeight, maxWidth, maxHeight)
 
             // ── Decode bitmap ─────────────────────────────────────────────────
 
@@ -76,29 +82,24 @@ internal object ImageCompressor {
                 inPreferredConfig = Bitmap.Config.RGB_565
             }
 
-            var bitmap = BitmapFactory.decodeFile(
-                input.absolutePath,
-                decodeOptions
-            ) ?: return@withContext null
+            var bitmap = BitmapFactory.decodeFile(input.absolutePath, decodeOptions)
+                ?: return@withContext null
+
+            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(40, fileNumber)) }
 
             // ── Correct EXIF orientation ─────────────────────────────────────
 
-            bitmap = correctOrientation(
-                bitmap,
-                input.absolutePath
-            )
+            bitmap = correctOrientation(bitmap, input.absolutePath)
+
+            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(60, fileNumber)) }
 
             // ── Final resize if needed ───────────────────────────────────────
 
-            val finalBitmap = exactResizeIfNeeded(
-                bitmap,
-                maxWidth,
-                maxHeight
-            )
+            val finalBitmap = exactResizeIfNeeded(bitmap, maxWidth, maxHeight)
 
-            if (finalBitmap != bitmap) {
-                bitmap.recycle()
-            }
+            if (finalBitmap != bitmap) bitmap.recycle()
+
+            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(75, fileNumber)) }
 
             // ── Create output file ───────────────────────────────────────────
 
@@ -120,30 +121,23 @@ internal object ImageCompressor {
                     CompressFormat.PNG -> Bitmap.CompressFormat.PNG
                 }
 
-                val effectiveQuality =
-                    if (outputFormat == CompressFormat.JPEG) {
-                        quality.coerceIn(0, 100)
-                    } else {
-                        100
-                    }
+                val effectiveQuality = if (outputFormat == CompressFormat.JPEG) {
+                    quality.coerceIn(0, 100)
+                } else {
+                    100
+                }
 
-                finalBitmap.compress(
-                    format,
-                    effectiveQuality,
-                    outputStream
-                )
+                finalBitmap.compress(format, effectiveQuality, outputStream)
             }
 
             finalBitmap.recycle()
 
+            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber)) }
+
             compressedFile
 
         } catch (e: Exception) {
-
-            if (e is CancellationException) {
-                throw e
-            }
-
+            if (e is CancellationException) throw e
             e.printStackTrace()
             null
         }
