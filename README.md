@@ -6,27 +6,56 @@ Supports both **Compose** and **XML (Activity/Fragment)** setups.
 
 ---
 
-## Installation
+## Why Shade?
 
-Add to your module's `build.gradle.kts`:
+| Feature                                    | Shade |
+|--------------------------------------------|-------|
+| Camera capture (image & video)             | ✅     |
+| Gallery picking (single & multi)           | ✅     |
+| Document picking (single & multi)          | ✅     |
+| Built-in image compression                 | ✅     |
+| Built-in video compression                 | ✅     |
+| Copy to cache with stable `File` reference | ✅     |
+| Per-file progress reporting                | ✅     |
+| Automatic permission handling              | ✅     |
+| Compose support                            | ✅     |
+| XML / Activity / Fragment support          | ✅     |
+| No boilerplate launcher registration       | ✅     |
+| Type-safe DSL configuration                | ✅     |
 
-```kotlin
-dependencies {
-    implementation("com.unitx:shade-core:1.0.0-alpha01")
+## 📦 Installation
 
-    // Compose support (optional)
-    implementation("com.unitx:shade-compose:1.0.0-alpha01")
+### Step 1: Add JitPack repository
+
+Add it in your root `settings.gradle` or `build.gradle`:
+
+```gradle
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven(url = "https://jitpack.io")
+    }
 }
 ```
 
-### FileProvider (required for camera capture)
+### Step 2: Add the dependency
 
-Add to your `AndroidManifest.xml`:
+```gradle
+dependencies {
+	        implementation("com.github.Unitx-in:shade-core:v1.0.0-alpha01")
+	}
+```
+
+### Step 3: Add FileProvider (required for camera capture)
+
+Add to your `AndroidManifest.xml` inside application block:
 
 ```xml
 <provider
     android:name="androidx.core.content.FileProvider"
-    android:authorities="${applicationId}.fileprovider"
+    android:authorities="${applicationId}.provider"
     android:exported="false"
     android:grantUriPermissions="true">
     <meta-data
@@ -103,11 +132,11 @@ shade.launch(ShadeAction.Document(listOf(DocumentMimeType.PDF)))
 
 Every action delivers a result in `onResult { }`:
 
-| Type | When |
-|---|---|
+| Type                   | When                                              |
+|------------------------|---------------------------------------------------|
 | `ShadeResult.Captured` | Camera capture — `file` and `uri` always non-null |
-| `ShadeResult.Single` | Single gallery or document pick |
-| `ShadeResult.Multiple` | Multi-select gallery or document pick |
+| `ShadeResult.Single`   | Single gallery or document pick                   |
+| `ShadeResult.Multiple` | Multi-select gallery or document pick             |
 
 ```kotlin
 // Camera — always Captured
@@ -304,18 +333,18 @@ shade.launch(ShadeAction.Document())
 
 ### Supported MIME types
 
-| Constant | Format |
-|---|---|
-| `DocumentMimeType.PDF` | PDF |
-| `DocumentMimeType.DOC` | Word 97–2003 |
-| `DocumentMimeType.DOCX` | Word |
-| `DocumentMimeType.XLS` | Excel 97–2003 |
-| `DocumentMimeType.XLSX` | Excel |
-| `DocumentMimeType.PPT` | PowerPoint 97–2003 |
-| `DocumentMimeType.PPTX` | PowerPoint |
-| `DocumentMimeType.TXT` | Plain text |
-| `DocumentMimeType.CSV` | CSV |
-| `DocumentMimeType.RTF` | Rich Text |
+| Constant                | Format             |
+|-------------------------|--------------------|
+| `DocumentMimeType.PDF`  | PDF                |
+| `DocumentMimeType.DOC`  | Word 97–2003       |
+| `DocumentMimeType.DOCX` | Word               |
+| `DocumentMimeType.XLS`  | Excel 97–2003      |
+| `DocumentMimeType.XLSX` | Excel              |
+| `DocumentMimeType.PPT`  | PowerPoint 97–2003 |
+| `DocumentMimeType.PPTX` | PowerPoint         |
+| `DocumentMimeType.TXT`  | Plain text         |
+| `DocumentMimeType.CSV`  | CSV                |
+| `DocumentMimeType.RTF`  | Rich Text          |
 
 ---
 
@@ -393,12 +422,12 @@ Row {
 
 Shade requests permissions automatically. You do not need to declare or request them manually.
 
-| Action | Permission |
-|---|---|
-| Image/Video Camera | `CAMERA` |
-| Video Gallery (API 33+) | `READ_MEDIA_VIDEO` |
-| Image Gallery | None (uses Photo Picker) |
-| Document Picker | None |
+| Action                  | Permission               |
+|-------------------------|--------------------------|
+| Image/Video Camera      | `CAMERA`                 |
+| Video Gallery (API 33+) | `READ_MEDIA_VIDEO`       |
+| Image Gallery           | None (uses Photo Picker) |
+| Document Picker         | None                     |
 
 ---
 
@@ -407,3 +436,27 @@ Shade requests permissions automatically. You do not need to declare or request 
 - **Min SDK:** 24
 - **Compile SDK:** 35
 - **Kotlin:** 1.9+
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## Support
+
+- Create an [Issue](https://github.com/Unitx-in/Slate/issues)
+- Email: developer@unitx.in
+- You can contact me on the above email directly, if you have any problem using the library.
+
+## Show your support
+
+Give a ⭐️ if this project helped you!
+
+---
+
+Made with ❤️ by [Navneet/Unitx] (https://github.com/navneetLawania)
