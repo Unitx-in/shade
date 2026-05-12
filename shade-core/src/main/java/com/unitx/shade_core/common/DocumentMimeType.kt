@@ -18,6 +18,7 @@ enum class DocumentMimeType(val value: String) {
         /**
          * Returns an array of all supported MIME type strings.
          */
-        val ALL_VALUES: Array<String> = entries.map { it.value }.toTypedArray()
+        val ALL_VALUE_TYPED_ARRAY: Array<String> = entries.map { it.value }.toTypedArray()
+        val ALL_ENTRY_LIST: List<DocumentMimeType> = entries as List<DocumentMimeType>
     }
 }

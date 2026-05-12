@@ -111,9 +111,10 @@ internal class DocumentHandler(
     fun handleDocument(action: ShadeAction.Document) {
         config.document ?: return
         val mimeTypes = action.mimeTypes
+            .map { it.value }
             .takeIf { it.isNotEmpty() }
             ?.toTypedArray()
-            ?: DocumentMimeType.ALL_VALUES
+            ?: DocumentMimeType.ALL_VALUE_TYPED_ARRAY
         registry.documentPickerLauncher.launch(mimeTypes)
     }
 }

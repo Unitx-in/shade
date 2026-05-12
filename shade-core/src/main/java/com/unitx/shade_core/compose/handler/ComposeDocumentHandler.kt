@@ -126,9 +126,10 @@ internal class ComposeDocumentHandler(
     fun handleDocument(action: ShadeAction.Document) {
         config.document ?: return
         val mimes = action.mimeTypes
+            .map { it.value }
             .takeIf { it.isNotEmpty() }
             ?.toTypedArray()
-            ?: DocumentMimeType.ALL_VALUES
+            ?: DocumentMimeType.ALL_VALUE_TYPED_ARRAY
         documentLauncher?.launch(mimes)
     }
 }

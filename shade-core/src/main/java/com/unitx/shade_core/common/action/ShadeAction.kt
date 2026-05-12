@@ -1,5 +1,7 @@
 package com.unitx.shade_core.common.action
 
+import com.unitx.shade_core.common.DocumentMimeType
+
 /**
  * Represents a specific media or file action to be performed by Shade.
  *
@@ -23,7 +25,5 @@ sealed class ShadeAction {
 
     object Pdf : ShadeAction()
 
-    data class Document(
-        val mimeTypes: List<String> = emptyList()
-    ) : ShadeAction()
+    data class Document(val mimeTypes: List<DocumentMimeType> = DocumentMimeType.ALL_ENTRY_LIST) : ShadeAction()
 }
