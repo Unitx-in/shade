@@ -54,16 +54,15 @@ class MainActivity : ComponentActivity() {
                                 }
                                 gallery {
                                     multiSelect(10)
-                                    copyToCache{
+                                    copyToCache {
                                         enabled = true
-                                        onProgress = { progressConfig->
+                                        onProgress = { progressConfig ->
                                             progressConfig as ProgressConfig.Copying
-                                            Log.i("Copying", progressConfig.percent.toString())
                                         }
                                     }
                                     onResult { multiple->
                                         multiple as ShadeResult.Multiple
-                                        Toast.makeText(context, "Images selected: ${multiple.items}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Images selected: ${multiple.items.count()}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }

@@ -17,7 +17,6 @@ import java.io.File
 import com.unitx.shade_core.common.compressor.ImageProcessor
 import com.unitx.shade_core.common.compressor.VideoProcessor
 import com.unitx.shade_core.common.config.extend.CompressionConfig
-import com.unitx.shade_core.common.config.extend.ProgressConfig
 
 /**
  * Handles all camera-related media flows — image capture and video recording.
@@ -78,8 +77,8 @@ internal class CameraHandler(
                         file = file,
                         prefix = prefix,
                         extension = extension,
-                        compression = compression,
-                        copyToCache = null,  // Caching is not available in camera
+                        copyToCache = null,
+                        compression = compression,  // Caching is not available in camera
                     )
                 },
                 onFailure = config.image?.camera?.onFailure,

@@ -54,8 +54,9 @@ internal class ComposeCameraHandler(
                     file = captureState.file,
                     prefix = "IMG_",
                     extension = ".jpg",
+                    copyToCache = null,
                     compression = cameraConfig.compress,
-                    copyToCache = null // Caching is not available in camera
+                    // Caching is not available in camera
                 )
 
                 cameraConfig.onResult?.invoke(

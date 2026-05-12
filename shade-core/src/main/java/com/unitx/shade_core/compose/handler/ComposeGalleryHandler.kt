@@ -55,7 +55,7 @@ internal class ComposeGalleryHandler(
                     prefix = "IMG_",
                     extension = ".jpg",
                     copyToCache = gallery.copyToCache,
-                    compression = gallery.compress
+                    compression = gallery.compress,
                 )
 
                 gallery.onResult?.invoke(
@@ -80,17 +80,17 @@ internal class ComposeGalleryHandler(
 
             scope.launch {
 
-                val items = multiple.items.map { media ->
+//                val existingFiles = multiple.items.map { it.file }
 
-                    ImageProcessor.process(
-                        context = context,
-                        uri = media.uri,
-                        prefix = "IMG_",
-                        extension = ".jpg",
-                        copyToCache = gallery.copyToCache,
-                        compression = gallery.compress
-                    )
-                }
+                val items = ImageProcessor.process(
+                    context = context,
+                    uris = multiple.items.map { it.uri },
+//                    files = existingFiles.takeIf { list -> list.any { it != null } },
+                    prefix = "IMG_",
+                    extension = ".jpg",
+                    copyToCache = gallery.copyToCache,
+                    compression = gallery.compress
+                )
 
                 gallery.onResult?.invoke(
                     ShadeResult.Multiple(items)
@@ -142,18 +142,18 @@ internal class ComposeGalleryHandler(
 
             scope.launch {
 
-                val items = multiple.items.map { media ->
+//                val existingFiles = multiple.items.map { it.file }
 
-                    VideoProcessor.process(
-                        context = context,
-                        uri = media.uri,
-                        prefix = "VID_",
-                        extension = ".mp4",
-                        copyToCache = gallery.copyToCache,
-                        compression = gallery.compress
-                    )
-                }
-
+                val items = VideoProcessor.process(
+                    context = context,
+                    uris = multiple.items.map{ it.uri },
+//                    files = existingFiles.takeIf { list-> list.any{ it != null } },
+                    prefix = "VID_",
+                    extension = ".mp4",
+                    copyToCache = gallery.copyToCache,
+                    compression = gallery.compress
+                )
+                
                 gallery.onResult?.invoke(
                     ShadeResult.Multiple(items)
                 )

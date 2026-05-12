@@ -16,6 +16,7 @@ import com.unitx.shade_core.common.compressor.ImageProcessor
 import com.unitx.shade_core.common.compressor.VideoProcessor
 import com.unitx.shade_core.common.config.extend.CompressionConfig
 import com.unitx.shade_core.common.config.extend.CacheConfig
+import com.unitx.shade_core.common.config.base.GalleryConfig
 
 /**
  * Handles all gallery-related media flows — image and video picking,
@@ -72,7 +73,7 @@ internal class GalleryHandler(
                         prefix = pref,
                         extension = ext,
                         copyToCache = copyToCache,
-                        compression = compression
+                        compression = compression,
                     )
                 },
                 compression = gallery.compress,
@@ -118,15 +119,15 @@ internal class GalleryHandler(
                 prefix = "IMG_",
                 extension = ".jpg",
                 copyToCache = gallery.copyToCache,
-                processor = { pickedUri, pref, ext, copyToCache, compression ->
+                processor = { uris, pref, ext, copyToCache, compression ->
 
                     ImageProcessor.process(
                         context = context,
-                        uri = pickedUri,
+                        uris = uris,
                         prefix = pref,
                         extension = ext,
                         copyToCache = copyToCache,
-                        compression = compression
+                        compression = compression,
                     )
                 },
                 compression = gallery.compress,
@@ -145,11 +146,11 @@ internal class GalleryHandler(
                 prefix = "VID_",
                 extension = ".mp4",
                 copyToCache = gallery.copyToCache,
-                processor = { pickedUri, pref, ext, copyToCache, compression ->
+                processor = { uris, pref, ext, copyToCache, compression ->
 
                     VideoProcessor.process(
                         context = context,
-                        uri = pickedUri,
+                        uris = uris,
                         prefix = pref,
                         extension = ext,
                         copyToCache = copyToCache,
@@ -238,12 +239,12 @@ internal class GalleryHandler(
         extension: String,
         copyToCache: CacheConfig?,
         processor: suspend (
-            uri: Uri,
+            uris: List<Uri>,
             prefix: String,
             extension: String,
             copyToCache: CacheConfig?,
             compression: CompressionConfig?
-        ) -> ShadeResult.ShadeMedia,
+        ) -> List<ShadeResult.ShadeMedia>,
         compression: CompressionConfig?,
         onFailure: ((ShadeError) -> Unit)?,
         onResult: ((ShadeResult.Multiple) -> Unit)?
@@ -255,33 +256,20 @@ internal class GalleryHandler(
                 return@launch
             }
 
-            val items = mutableListOf<ShadeResult.ShadeMedia>()
+            val items = processor(
+                uris,
+                prefix,
+                extension,
+                copyToCache,
+                compression
+            )
 
-            for (uri in uris) {
-
-                val media = processor(
-                    uri,
-                    prefix,
-                    extension,
-                    copyToCache,
-                    compression
-                )
-
-                if (compression?.enabled == true && media.file == null) {
-
-                    onFailure?.invoke(
-                        ShadeError.CompressionFailed
-                    )
-
-                    return@launch
-                }
-
-                items += media
+            if (compression?.enabled == true && items.any { it.file == null }) {
+                onFailure?.invoke(ShadeError.CompressionFailed)
+                return@launch
             }
 
-            onResult?.invoke(
-                ShadeResult.Multiple(items)
-            )
+            onResult?.invoke(ShadeResult.Multiple(items))
         }
     }
 

@@ -36,15 +36,15 @@ internal object VideoProcessor {
 
             } else file ?: if (copyToCache?.enabled == true) {
 
-                    FileHelper.copyUriToCache(
-                        context = context,
-                        uri = uri,
-                        prefix = prefix,
-                        extension = extension,
-                        onProgress = copyToCache.onProgress
-                    )
+                FileHelper.copyUriToCache(
+                    context = context,
+                    uri = uri,
+                    prefix = prefix,
+                    extension = extension,
+                    onProgress = copyToCache.onProgress
+                )
 
-                } else null
+            } else null
 
         val finalUri =
             if (processedFile != null && file == null) {
@@ -57,6 +57,58 @@ internal object VideoProcessor {
             uri = finalUri,
             file = processedFile
         )
+    }
+
+    suspend fun process(
+        context: Context,
+        uris: List<Uri>,
+        files: List<File?>? = null,
+        prefix: String,
+        extension: String,
+        copyToCache: CacheConfig?,
+        compression: CompressionConfig?,
+    ): List<ShadeResult.ShadeMedia> = withContext(Dispatchers.IO) {
+
+        val processedFiles = if (compression?.enabled == true) {
+
+            compressFromUri(
+                context = context,
+                uris = uris,
+                prefix = prefix,
+                extension = extension,
+                compression = compression
+            )
+
+        } else files ?: if (copyToCache?.enabled == true) {
+
+            FileHelper.copyUriToCache(
+                context = context,
+                uris = uris,
+                prefix = prefix,
+                extension = extension,
+                onProgress = copyToCache.onProgress
+            )
+
+        } else null
+
+        return@withContext processedFiles?.mapIndexed { index, processedFile ->
+            val originalUri = uris[index]
+            val finalUri = if (processedFile != null && files == null) {
+                FileHelper.getUriFromFile(context, processedFile)
+            } else {
+                originalUri
+            }
+
+            ShadeResult.ShadeMedia(
+                uri = finalUri,
+                file = processedFile
+            )
+        } ?: uris.map { uri ->
+            ShadeResult.ShadeMedia(
+                uri = uri,
+                file = null
+            )
+        }
     }
 
     private suspend fun compressFromUri(
@@ -97,8 +149,25 @@ internal object VideoProcessor {
             )
 
         } finally {
-
             sourceFile.delete()
+        }
+    }
+
+    private suspend fun compressFromUri(
+        context: Context,
+        uris: List<Uri>,
+        prefix: String,
+        extension: String,
+        compression: CompressionConfig
+    ): List<File?> {
+        return uris.map { uri ->
+            compressFromUri(
+                context = context,
+                uri = uri,
+                prefix = prefix,
+                extension = extension,
+                compression = compression
+            )
         }
     }
 }

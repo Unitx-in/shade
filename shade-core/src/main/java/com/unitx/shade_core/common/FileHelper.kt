@@ -76,10 +76,34 @@ internal object FileHelper {
 
     internal suspend fun copyUriToCache(
         context: Context,
+        uris: List<Uri>,
+        prefix: String,
+        extension: String,
+        onProgress: ((ProgressConfig.Copying) -> Unit)?,
+    ): List<File?> = withContext(Dispatchers.IO) {
+        val resultCopy = mutableListOf<File?>()
+        for ((index, uri) in uris.withIndex()){
+            copyUriToCache(
+                context = context,
+                uri = uri,
+                prefix = prefix,
+                extension = extension,
+                onProgress = onProgress,
+                fileNumber = index + 1
+            ).also {
+                resultCopy.add(it)
+            }
+        }
+        resultCopy
+    }
+
+    internal suspend fun copyUriToCache(
+        context: Context,
         uri: Uri,
         prefix: String,
         extension: String,
-        onProgress: ((ProgressConfig.Copying) -> Unit)?
+        onProgress: ((ProgressConfig.Copying) -> Unit)?,
+        fileNumber: Int = 1,
     ): File? = withContext(Dispatchers.IO) {
         try {
             val file = File.createTempFile(prefix, extension, context.cacheDir)
@@ -109,7 +133,7 @@ internal object FileHelper {
                             if (percent != lastPercent) {
                                 lastPercent = percent
                                 withContext(Dispatchers.Main) {
-                                    onProgress.invoke(ProgressConfig.Copying(percent))
+                                    onProgress.invoke(ProgressConfig.Copying(percent, fileNumber))
                                 }
                             }
                             bytes = input.read(buffer)
