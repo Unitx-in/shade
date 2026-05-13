@@ -1,0 +1,28 @@
+Other features for shade:
+1.  Cropping
+    Built-in crop UI after image capture or gallery pick.
+    Most media apps need this and it's painful to wire up separately.
+2.  Max file size enforcement ⭐
+    maxFileSizeMb = 5 — auto-compress until the file is under the limit.
+    Very common requirement for upload APIs.
+3.  Video thumbnail extraction ⭐
+    extractThumbnail = true — return a Bitmap or File alongside the video result.
+    Nearly every video feature needs this.
+4.  Audio picking
+    Extend ShadeAction with Audio.Gallery — same pattern as video but for music/recording files.
+5.  Retry / fallback
+    If compression fails, automatically fall back to copyToCache instead of firing onFailure.
+    Less surprising behavior for users.
+6.  Upload-ready output ⭐
+    asMultipart = true — deliver a MultipartBody.Part directly instead of a File, ready for Retrofit/OkHttp.
+    (Bundle it and add a shade-okhttp module that adds shade-retrofit module —
+    ShadeResult.toRequestBody(), ShadeResult.toMultipartPart(name))
+7.  Background processing — move compression off the coroutine scope tied to the UI and
+    into a WorkManager job for large videos. Survive rotation and process death.
+8.  ShadeLogger — built-in debug logging toggle. ⭐
+    Shade.enableLogging(BuildConfig.DEBUG) prints every step
+    (permission request, file creation, compression stats, cache copy).
+9.  Validation warnings at config time —
+    warn if compress and copyToCache are both enabled,
+    if quality = 0, if maxItems = 1 with multiSelect, etc.
+10. ShadeFlow — expose results as Flow<ShadeResult> instead of callbacks for cleaner ViewModel integration.
