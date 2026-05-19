@@ -12,6 +12,7 @@ appcompat = "1.7.1"
 material = "1.13.0"
 runtime = "1.7.5"
 exifinterface = "1.3.6"
+transcoderAndroid = "0.11.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,6 +33,7 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
+transcoder-android = { module = "io.deepmedia.community:transcoder-android", version.ref = "transcoderAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
