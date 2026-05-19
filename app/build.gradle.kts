@@ -56,4 +56,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation(project(":shade-core"))
+
+//    implementation("com.github.Unitx-in:shade:0.0.5-alpha")
 }

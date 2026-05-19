@@ -17,13 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.unitx.shade.ui.theme.ShadeTheme
-import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.action.ShadeAction
 import com.unitx.shade_core.common.compressor.CompressFormat
 import com.unitx.shade_core.common.config.extend.ProgressConfig
 import com.unitx.shade_core.common.result.ShadeResult
 import com.unitx.shade_core.compose.rememberShade
-import com.unitx.shade_core.core.ShadeCore
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
