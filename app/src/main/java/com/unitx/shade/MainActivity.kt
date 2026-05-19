@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.unitx.shade.ui.theme.ShadeTheme
+import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.action.ShadeAction
 import com.unitx.shade_core.common.compressor.CompressFormat
 import com.unitx.shade_core.common.config.extend.ProgressConfig
@@ -43,22 +44,23 @@ class MainActivity : ComponentActivity() {
                                 camera {
                                     compress {
                                         enabled = true
-                                        quality = 80
-                                        maxWidth = 1024
-                                        maxHeight = 1024
-                                        format = CompressFormat.PNG
-                                        onProgress = { progressConfig->
+                                        videoBitrate = 2_000_000
+                                        frameRate = 30
+                                        maxWidth = 720
+                                        keyFrameInterval = 2
+                                        onProgress = { progressConfig ->
                                             progressConfig as ProgressConfig.Compressing
-                                            Log.i("Compressing", "progress: ${progressConfig.percent} , file number ${progressConfig.fileNumber}")
+                                            Log.i("Compressing", "progress: ${progressConfig.percent}, file number ${progressConfig.fileNumber}")
                                         }
                                     }
-                                    onResult { captured->
-                                        Toast.makeText(context, "Image captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
+                                    onResult { captured ->
+                                        Toast.makeText(context, "Video captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
                                     }
-                                    onFailure { error->
+                                    onFailure { error ->
                                         Toast.makeText(context, "$error", Toast.LENGTH_SHORT).show()
                                     }
                                 }
+
                                 gallery {
                                     multiSelect {
                                         enabled = true
@@ -70,35 +72,31 @@ class MainActivity : ComponentActivity() {
                                             progressConfig as ProgressConfig.Copying
                                         }
                                     }
-                                    onResult { multiple->
+                                    onResult { multiple ->
                                         multiple as ShadeResult.Multiple
-                                        Toast.makeText(context, "Images selected: ${multiple.items.map { it.file?.absolutePath }}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Videos selected: ${multiple.items.map { it.file?.absolutePath }}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
+                            }
 
-                                document {
-//                                    multiSelect {
-//                                        enabled = true
-//                                        maxItems = 2
-//                                    }
-                                    copyToCache {
-                                        enabled = true
-                                        onProgress = {
-                                            it as ProgressConfig.Copying
-                                            Log.i("Document", "progress: ${it.percent}")
-                                        }
+                            document {
+                                copyToCache {
+                                    enabled = true
+                                    onProgress = {
+                                        it as ProgressConfig.Copying
+                                        Log.i("Document", "progress: ${it.percent}")
                                     }
-                                    onResult { result->
-                                        result as ShadeResult.Multiple
-                                        Log.i("Document", "${result.items.map { it.file?.absolutePath }}")
-                                    }
+                                }
+                                onResult { result ->
+                                    result as ShadeResult.Single
+                                    Log.i("Document", "${result.file?.absolutePath}")
                                 }
                             }
                         }
 
                         LaunchedEffect(Unit) {
 //                            shade.launch(ShadeAction.Document(listOf(DocumentMimeType.PDF)))
-                            shade.launch(ShadeAction.Video.Camera)
+                            shade.launch(ShadeAction.Video.Gallery)
                         }
                     }
                 }
