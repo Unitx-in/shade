@@ -54,4 +54,6 @@ class CompressionConfig {
      * per-file percent and file number.
      */
     var onProgress: ((ProgressConfig) -> Unit)? = null
+
+    var maxFileSize: Double = 10.0
 }

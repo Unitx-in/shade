@@ -22,6 +22,7 @@ Supports both **Compose** and **XML (Activity/Fragment)** setups.
 | XML / Activity / Fragment support          | ✅     |
 | No boilerplate launcher registration       | ✅     |
 | Type-safe DSL configuration                | ✅     |
+| Upload-ready OkHttp output                 | ✅     |
 
 ## 📦 Installation
 
@@ -190,6 +191,91 @@ document {
 > `file` is non-null on `Single` and `Multiple` items only when `copyToCache` or `compress` is enabled.
 
 ---
+
+## Upload-ready Output (OkHttp)
+
+Convert any `ShadeResult` directly into an OkHttp `RequestBody` or `MultipartBody.Part`, ready for Retrofit or raw OkHttp — no extra wrapping needed.
+
+> Requires OkHttp in your app dependencies:
+> ```gradle
+> dependencies {
+>     implementation("com.squareup.okhttp3:okhttp:5.3.2")
+> }
+> ```
+
+### File requirement
+
+| Result type | File available? |
+|---|---|
+| `ShadeResult.Captured` | ✅ Always (camera always writes a file) |
+| `ShadeResult.Single` | ✅ When `copyToCache` or `compress` is enabled |
+| `ShadeResult.Multiple` items | ✅ When `copyToCache` or `compress` is enabled |
+
+### Camera capture
+
+```kotlin
+camera {
+    onResult { result ->
+        val body = result.toRequestBody()
+        val part = result.toMultipartPart("avatar")
+    }
+}
+```
+
+### Single gallery / document pick
+
+```kotlin
+gallery {
+    copyToCache { enabled = true }
+    onResult { result ->
+        val single = result as ShadeResult.Single
+        val part = single.toMultipartPart("image")
+    }
+}
+```
+
+### Multi-select gallery
+
+```kotlin
+gallery {
+    multiSelect { enabled = true; maxItems = 5 }
+    copyToCache { enabled = true }
+    onResult { result ->
+        val multiple = result as ShadeResult.Multiple
+        val parts: List<MultipartBody.Part> = multiple.toMultipartParts("images")
+    }
+}
+```
+
+### Override MIME type
+
+Pass an `OkHttpMimeType` enum value to override the inferred type:
+
+```kotlin
+val part = result.toMultipartPart(
+    name     = "photo",
+    mimeType = OkHttpMimeType.JPEG
+)
+```
+
+### Retrofit interface example
+
+```kotlin
+interface MediaApi {
+    @Multipart
+    @POST("user/avatar")
+    suspend fun uploadAvatar(
+        @Part avatar: MultipartBody.Part
+    ): Response<Unit>
+ 
+    @Multipart
+    @POST("posts/media")
+    suspend fun uploadImages(
+        @Part images: List<MultipartBody.Part>
+    ): Response<Unit>
+}
+```
+
 
 ## Errors
 

@@ -64,6 +64,9 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.exifinterface)
     implementation(libs.transcoder.android)
+    // OkHttp — compileOnly so the consumer brings their own version.
+    // Shade-okhttp is tested against 4.x; 3.x should also work.
+    compileOnly(libs.okhttp)
 }
 
 

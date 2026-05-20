@@ -17,11 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.unitx.shade.ui.theme.ShadeTheme
-import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.action.ShadeAction
-import com.unitx.shade_core.common.compressor.CompressFormat
 import com.unitx.shade_core.common.config.extend.ProgressConfig
 import com.unitx.shade_core.common.result.ShadeResult
+import com.unitx.shade_core.common.okHttp.toMultipartPart
 import com.unitx.shade_core.compose.rememberShade
 
 class MainActivity : ComponentActivity() {
@@ -40,7 +39,7 @@ class MainActivity : ComponentActivity() {
                         val context = LocalContext.current
 
                         val shade = rememberShade {
-                            video {
+                            image {
                                 camera {
                                     compress {
                                         enabled = true
@@ -54,6 +53,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                     onResult { captured ->
+                                        val new = captured.toMultipartPart("cameraImage")
+                                        Log.i("MultipartTesting", new.toString())
                                         Toast.makeText(context, "Video captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
                                     }
                                     onFailure { error ->
@@ -91,12 +92,16 @@ class MainActivity : ComponentActivity() {
                                     result as ShadeResult.Single
                                     Log.i("Document", "${result.file?.absolutePath}")
                                 }
+
+                                onFailure {
+                                    Toast.makeText(context, "$it", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
 
                         LaunchedEffect(Unit) {
 //                            shade.launch(ShadeAction.Document(listOf(DocumentMimeType.PDF)))
-                            shade.launch(ShadeAction.Video.Gallery)
+                            shade.launch(ShadeAction.Image.Camera)
                         }
                     }
                 }

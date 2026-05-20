@@ -21,4 +21,7 @@ Other features for shade:
     warn if compress and copyToCache are both enabled,
     if quality = 0, if maxItems = 1 with multiSelect, etc.
 8.  ShadeFlow — expose results as Flow<ShadeResult> instead of callbacks for cleaner ViewModel integration.
-9.
+
+
+Improvements:
+1.  Show errror if required permisison is not added to the manifest.
