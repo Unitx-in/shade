@@ -10,7 +10,7 @@ Other features for shade:
 4.  Retry / fallback
     If compression fails, automatically fall back to copyToCache instead of firing onFailure.
     Less surprising behavior for users.
-5.  Upload-ready output ⭐
+5.  Upload-ready output ✅
     asMultipart = true — deliver a MultipartBody.Part directly instead of a File, ready for Retrofit/OkHttp.
     (Bundle it and add a shade-okhttp module that adds shade-retrofit module —
     ShadeResult.toRequestBody(), ShadeResult.toMultipartPart(name))
