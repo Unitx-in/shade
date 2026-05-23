@@ -45,7 +45,7 @@ dependencyResolutionManagement {
 
 ```gradle
 dependencies {
-	        implementation("com.github.Unitx-in:shade:0.0.5-alpha")
+	        implementation("com.github.Unitx-in:shade:0.0.5-alpha-01")
 	}
 ```
 
@@ -535,7 +535,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Support
 
-- Create an [Issue](https://github.com/Unitx-in/Slate/issues)
+- Create an [Issue](https://github.com/Unitx-in/shade/issues)
 - Email: developer@unitx.in
 - You can contact me on the above email directly, if you have any problem using the library.
 
