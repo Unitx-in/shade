@@ -28,7 +28,7 @@ internal object ImageCompressor {
         maxHeight: Int?,
         onProgress: ((ProgressConfig.Compressing) -> Unit)?,
         outputFormat: CompressFormat = CompressFormat.JPEG
-    ): List<File?> {
+    ): List<Result<File>> {
         return inputs.mapIndexed { index, file ->
             compress(
                 context = context,
@@ -52,30 +52,25 @@ internal object ImageCompressor {
         onProgress: ((ProgressConfig.Compressing) -> Unit)?,
         fileNumber: Int = 1,
         outputFormat: CompressFormat = CompressFormat.JPEG
-    ): File? = withContext(Dispatchers.IO) {
+    ): Result<File> = withContext(Dispatchers.IO) {
 
         try {
-
-            // ── Decode bounds only ────────────────────────────────────────────
-
-            val boundsOptions = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-
+            val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(input.absolutePath, boundsOptions)
 
             val originalWidth = boundsOptions.outWidth
             val originalHeight = boundsOptions.outHeight
 
-            if (originalWidth <= 0 || originalHeight <= 0) return@withContext null
+            if (originalWidth <= 0 || originalHeight <= 0) {
+                // ← was: return@withContext null
+                return@withContext Result.failure(
+                    IllegalStateException("Invalid image dimensions: ${originalWidth}x${originalHeight} for file ${input.name}")
+                )
+            }
 
             withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(10, fileNumber)) }
 
-            // ── Calculate sample size ─────────────────────────────────────────
-
             val sampleSize = calculateSampleSize(originalWidth, originalHeight, maxWidth, maxHeight)
-
-            // ── Decode bitmap ─────────────────────────────────────────────────
 
             val decodeOptions = BitmapFactory.Options().apply {
                 inSampleSize = sampleSize
@@ -83,50 +78,37 @@ internal object ImageCompressor {
             }
 
             var bitmap = BitmapFactory.decodeFile(input.absolutePath, decodeOptions)
-                ?: return@withContext null
+            // ← was: ?: return@withContext null
+                ?: return@withContext Result.failure(
+                    IllegalStateException("BitmapFactory returned null for file ${input.name}")
+                )
 
             withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(40, fileNumber)) }
-
-            // ── Correct EXIF orientation ─────────────────────────────────────
 
             bitmap = correctOrientation(bitmap, input.absolutePath)
 
             withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(60, fileNumber)) }
 
-            // ── Final resize if needed ───────────────────────────────────────
-
             val finalBitmap = exactResizeIfNeeded(bitmap, maxWidth, maxHeight)
-
             if (finalBitmap != bitmap) bitmap.recycle()
 
             withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(75, fileNumber)) }
-
-            // ── Create output file ───────────────────────────────────────────
 
             val compressedFile = File.createTempFile(
                 "IMG_CMP_",
                 when (outputFormat) {
                     CompressFormat.JPEG -> ".jpg"
-                    CompressFormat.PNG -> ".png"
+                    CompressFormat.PNG  -> ".png"
                 },
                 context.cacheDir
             )
 
-            // ── Compress bitmap ──────────────────────────────────────────────
-
             FileOutputStream(compressedFile).use { outputStream ->
-
                 val format = when (outputFormat) {
                     CompressFormat.JPEG -> Bitmap.CompressFormat.JPEG
-                    CompressFormat.PNG -> Bitmap.CompressFormat.PNG
+                    CompressFormat.PNG  -> Bitmap.CompressFormat.PNG
                 }
-
-                val effectiveQuality = if (outputFormat == CompressFormat.JPEG) {
-                    quality.coerceIn(0, 100)
-                } else {
-                    100
-                }
-
+                val effectiveQuality = if (outputFormat == CompressFormat.JPEG) quality.coerceIn(0, 100) else 100
                 finalBitmap.compress(format, effectiveQuality, outputStream)
             }
 
@@ -134,12 +116,12 @@ internal object ImageCompressor {
 
             withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber)) }
 
-            compressedFile
+            Result.success(compressedFile)  // ← was: compressedFile
 
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            e.printStackTrace()
-            null
+            // ← was: e.printStackTrace(); null
+            Result.failure(e)
         }
     }
 

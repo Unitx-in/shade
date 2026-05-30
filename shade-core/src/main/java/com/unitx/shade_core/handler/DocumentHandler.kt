@@ -10,18 +10,12 @@ import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.core.LauncherRegistry
 import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeFileSaveException
 import com.unitx.shade_core.common.result.ShadeResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/**
- * Handles PDF and generic document picking flows.
- *
- * Responsibilities:
- * - Launching the system file picker with appropriate MIME types
- * - Copying content to cache when [DocumentConfig.copyToCache] is true
- * - Dispatching [ShadeResult.Single] or [ShadeError] to the DSL config callbacks
- */
 internal class DocumentHandler(
     private val context: Context,
     private val config: ShadeConfig,
@@ -39,22 +33,31 @@ internal class DocumentHandler(
                     return@launch
                 }
 
-                val processed = DocumentProcessor.process(
-                    context = context,
-                    uri = uri,
-                    prefix = "DOC_",
-                    extension = FileHelper.extensionFromUri(context, uri),
-                    copyToCache = docConfig.copyToCache,
-                )
+                try {
+                    val processed = DocumentProcessor.process(
+                        context = context,
+                        uri = uri,
+                        prefix = "DOC_",
+                        extension = FileHelper.extensionFromUri(context, uri),
+                        copyToCache = docConfig.copyToCache,
+                    )
 
-                if (docConfig.copyToCache?.enabled == true && processed.file == null) {
-                    docConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
-                    return@launch
+                    docConfig.onResult?.invoke(
+                        ShadeResult.Single(uri = processed.uri, file = processed.file)
+                    )
+
+                } catch (e: ShadeFileSaveException) {
+                    docConfig.onFailure?.invoke(ShadeError.FileSaveFailed(uri = e.uri))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    docConfig.onFailure?.invoke(
+                        ShadeError.DocumentProcessingFailed(
+                            failedUris = listOf(uri),
+                            cause = e
+                        )
+                    )
                 }
-
-                docConfig.onResult?.invoke(
-                    ShadeResult.Single(uri = processed.uri, file = processed.file)
-                )
             }
         }
 
@@ -67,20 +70,29 @@ internal class DocumentHandler(
                     return@launch
                 }
 
-                val items = DocumentProcessor.process(
-                    context = context,
-                    uris = uris,
-                    prefix = "DOC_",
-                    extensions = uris.map { FileHelper.extensionFromUri(context, it) },
-                    copyToCache = docConfig.copyToCache,
-                )
+                try {
+                    val items = DocumentProcessor.process(
+                        context = context,
+                        uris = uris,
+                        prefix = "DOC_",
+                        extensions = uris.map { FileHelper.extensionFromUri(context, it) },
+                        copyToCache = docConfig.copyToCache,
+                    )
 
-                if (docConfig.copyToCache?.enabled == true && items.any { it.file == null }) {
-                    docConfig.onFailure?.invoke(ShadeError.FileSaveFailed)
-                    return@launch
+                    docConfig.onResult?.invoke(ShadeResult.Multiple(items))
+
+                } catch (e: ShadeFileSaveException) {
+                    docConfig.onFailure?.invoke(ShadeError.FileSaveFailed(uris = e.uris))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    docConfig.onFailure?.invoke(
+                        ShadeError.DocumentProcessingFailed(
+                            failedUris = uris,
+                            cause = e
+                        )
+                    )
                 }
-
-                docConfig.onResult?.invoke(ShadeResult.Multiple(items))
             }
         }
     }

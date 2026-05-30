@@ -13,17 +13,14 @@ import com.unitx.shade_core.compose.state.CaptureState
 import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
 import com.unitx.shade_core.common.config.ShadeConfig
+import com.unitx.shade_core.common.result.ShadeCompressionException
 import com.unitx.shade_core.common.result.ShadeError
+import com.unitx.shade_core.common.result.ShadeFileSaveException
 import com.unitx.shade_core.common.result.ShadeResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/**
- * Compose-side camera handler.
- *
- * Wires permission and capture result callbacks, owns [CaptureState],
- * and exposes [handleImageCamera] / [handleVideoCamera] to [ComposeShadeCore].
- */
 internal class ComposeCameraHandler(
     private val context: Context,
     private val config: ShadeConfig,
@@ -47,24 +44,45 @@ internal class ComposeCameraHandler(
             val cameraConfig = config.image?.camera ?: return@onResult
 
             scope.launch {
-
-                val processed = ImageProcessor.process(
-                    context = context,
-                    uri = captured.uri,
-                    file = captureState.file,
-                    prefix = "IMG_",
-                    extension = ".jpg",
-                    copyToCache = null,
-                    compression = cameraConfig.compress,
-                    // Caching is not available in camera
-                )
-
-                cameraConfig.onResult?.invoke(
-                    ShadeResult.Captured(
-                        file = processed.file!!,
-                        uri = processed.uri
+                try {
+                    val processed = ImageProcessor.process(
+                        context = context,
+                        uri = captured.uri,
+                        file = captureState.file,
+                        prefix = "IMG_",
+                        extension = ".jpg",
+                        copyToCache = null,
+                        compression = cameraConfig.compress,
                     )
-                )
+
+                    cameraConfig.onResult?.invoke(
+                        ShadeResult.Captured(
+                            file = processed.file ?: captureState.file!!,
+                            uri = processed.uri
+                        )
+                    )
+
+                } catch (e: ShadeFileSaveException) {
+                    cameraConfig.onFailure?.invoke(
+                        ShadeError.FileSaveFailed(uri = e.uri, cause = e.cause)
+                    )
+                } catch (e: ShadeCompressionException) {
+                    cameraConfig.onFailure?.invoke(
+                        ShadeError.CompressionFailed(
+                            source = ShadeError.CompressionSource.Image,
+                            cause = e.cause
+                        )
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    cameraConfig.onFailure?.invoke(
+                        ShadeError.CaptureFailed(
+                            reason = ShadeError.CaptureFailureReason.ProcessorFailed,
+                            cause = e
+                        )
+                    )
+                }
             }
         }
 
@@ -77,23 +95,45 @@ internal class ComposeCameraHandler(
             val cameraConfig = config.video?.camera ?: return@onResult
 
             scope.launch {
-
-                val processed = VideoProcessor.process(
-                    context = context,
-                    uri = captured.uri,
-                    file = captureState.file,
-                    prefix = "VID_",
-                    extension = ".mp4",
-                    compression = cameraConfig.compress,
-                    copyToCache = null // Caching is not available in camera
-                )
-
-                cameraConfig.onResult?.invoke(
-                    ShadeResult.Captured(
-                        file = processed.file!!,
-                        uri = processed.uri
+                try {
+                    val processed = VideoProcessor.process(
+                        context = context,
+                        uri = captured.uri,
+                        file = captureState.file,
+                        prefix = "VID_",
+                        extension = ".mp4",
+                        compression = cameraConfig.compress,
+                        copyToCache = null,
                     )
-                )
+
+                    cameraConfig.onResult?.invoke(
+                        ShadeResult.Captured(
+                            file = processed.file ?: captureState.file!!,
+                            uri = processed.uri
+                        )
+                    )
+
+                } catch (e: ShadeFileSaveException) {
+                    cameraConfig.onFailure?.invoke(
+                        ShadeError.FileSaveFailed(uri = e.uri, cause = e.cause)
+                    )
+                } catch (e: ShadeCompressionException) {
+                    cameraConfig.onFailure?.invoke(
+                        ShadeError.CompressionFailed(
+                            source = ShadeError.CompressionSource.Video,
+                            cause = e.cause
+                        )
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    cameraConfig.onFailure?.invoke(
+                        ShadeError.CaptureFailed(
+                            reason = ShadeError.CaptureFailureReason.ProcessorFailed,
+                            cause = e
+                        )
+                    )
+                }
             }
         }
 
@@ -146,9 +186,15 @@ internal class ComposeCameraHandler(
 
     fun launchImageCamera() {
         scope.launch {
-            val (file, uri) = FileHelper.createTempFile(context, "IMG_", ".jpg") ?: run {
-                config.image?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return@launch
+            val result = runCatching { FileHelper.createTempFile(context, "IMG_", ".jpg") }
+            val pair = result.getOrNull()
+            if (pair == null) {
+                config.image?.camera?.onFailure?.invoke(
+                    ShadeError.FileCreationFailed(cause = result.exceptionOrNull())
+                )
+                return@launch
             }
+            val (file, uri) = pair
             captureState.file = file
             captureState.uri = uri
             imageCameraLauncher?.launch(uri)
@@ -157,9 +203,15 @@ internal class ComposeCameraHandler(
 
     fun launchVideoCamera() {
         scope.launch {
-            val (file, uri) = FileHelper.createTempFile(context, "VID_", ".mp4") ?: run {
-                config.video?.camera?.onFailure?.invoke(ShadeError.FileCreationFailed); return@launch
+            val result = runCatching { FileHelper.createTempFile(context, "VID_", ".mp4") }
+            val pair = result.getOrNull()
+            if (pair == null) {
+                config.video?.camera?.onFailure?.invoke(
+                    ShadeError.FileCreationFailed(cause = result.exceptionOrNull())
+                )
+                return@launch
             }
+            val (file, uri) = pair
             captureState.file = file
             captureState.uri = uri
             videoCameraLauncher?.launch(uri)

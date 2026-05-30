@@ -4,12 +4,12 @@ import android.content.Context
 import android.net.Uri
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.config.extend.CacheConfig
+import com.unitx.shade_core.common.result.ShadeFileSaveException
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal object DocumentProcessor {
-
     suspend fun process(
         context: Context,
         uri: Uri,
@@ -25,7 +25,7 @@ internal object DocumentProcessor {
                 prefix = prefix,
                 extension = extension,
                 onProgress = copyToCache.onProgress
-            )
+            ) ?: throw ShadeFileSaveException(uri = uri)
         } else null
 
         val finalUri = if (processedFile != null) {
@@ -46,13 +46,16 @@ internal object DocumentProcessor {
     ): List<ShadeResult.ShadeMedia> = withContext(Dispatchers.IO) {
 
         val processedFiles = if (copyToCache?.enabled == true) {
-            FileHelper.copyUriToCache(
+            val files = FileHelper.copyUriToCache(
                 context = context,
                 uris = uris,
                 prefix = prefix,
                 extensions = extensions,
                 onProgress = copyToCache.onProgress
             )
+            val failedUris = files.mapIndexedNotNull { i, f -> if (f == null) uris.getOrNull(i) else null }
+            if (failedUris.isNotEmpty()) throw ShadeFileSaveException(uris = failedUris)
+            files
         } else null
 
         processedFiles?.mapIndexed { index, processedFile ->

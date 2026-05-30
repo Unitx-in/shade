@@ -9,6 +9,7 @@ import com.unitx.shade_core.common.config.extend.ProgressConfig
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -26,7 +27,7 @@ internal object VideoCompressor {
         inputs: List<File>,
         params: CompressionParams = CompressionParams(),
         onProgress: ((ProgressConfig.Compressing) -> Unit)? = null,
-    ): List<File?> {
+    ): List<Result<File>> {
         return inputs.mapIndexed { index, file ->
             compress(
                 input = file,
@@ -37,13 +38,12 @@ internal object VideoCompressor {
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun compress(
         input: File,
         params: CompressionParams = CompressionParams(),
         onProgress: ((ProgressConfig.Compressing) -> Unit)? = null,
         fileNumber: Int = 1,
-    ): File? = suspendCancellableCoroutine { continuation ->
+    ): Result<File> = suspendCancellableCoroutine { continuation ->  // ← Result<File> not File?
 
         val output = File.createTempFile("VID_CMP_", ".mp4", input.parentFile)
 
@@ -52,8 +52,7 @@ internal object VideoCompressor {
             .setVideoTrackStrategy(
                 DefaultVideoStrategy.Builder()
                     .addResizer(
-                        if (params.maxWidth != null)
-                            AtMostResizer(params.maxWidth)
+                        if (params.maxWidth != null) AtMostResizer(params.maxWidth)
                         else PassThroughResizer()
                     )
                     .bitRate(params.videoBitrate.toLong())
@@ -68,15 +67,18 @@ internal object VideoCompressor {
                 }
                 override fun onTranscodeCompleted(successCode: Int) {
                     onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber))
-                    continuation.resume(output)
+                    continuation.resume(Result.success(output))  // ← was: resume(output)
                 }
                 override fun onTranscodeCanceled() {
                     output.delete()
-                    continuation.resume(null)
+                    // ← was: resume(null) which lost the cancellation reason
+                    continuation.resume(
+                        Result.failure(CancellationException("Video transcoding was cancelled"))
+                    )
                 }
                 override fun onTranscodeFailed(exception: Throwable) {
                     output.delete()
-                    continuation.resumeWithException(exception)
+                    continuation.resume(Result.failure(exception))  // ← was: resumeWithException which crashes caller
                 }
             })
             .transcode()

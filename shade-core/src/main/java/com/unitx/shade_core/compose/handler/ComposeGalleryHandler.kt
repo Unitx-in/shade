@@ -12,16 +12,13 @@ import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.processor.ImageProcessor
 import com.unitx.shade_core.common.processor.VideoProcessor
+import com.unitx.shade_core.common.result.ShadeCompressionException
+import com.unitx.shade_core.common.result.ShadeFileSaveException
 import com.unitx.shade_core.common.result.ShadeResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 
-/**
- * Compose-side gallery handler.
- *
- * Wires gallery result callbacks and media permission, and exposes
- * [handleImageGallery] / [handleVideoGallery] to [ComposeShadeCore].
- */
 internal class ComposeGalleryHandler(
     private val context: Context,
     private val config: ShadeConfig,
@@ -48,22 +45,36 @@ internal class ComposeGalleryHandler(
             val gallery = config.image?.gallery ?: return@onResult
 
             scope.launch {
-
-                val processed = ImageProcessor.process(
-                    context = context,
-                    uri = single.uri,
-                    prefix = "IMG_",
-                    extension = ".jpg",
-                    copyToCache = gallery.copyToCache,
-                    compression = gallery.compress,
-                )
-
-                gallery.onResult?.invoke(
-                    ShadeResult.Single(
-                        uri = processed.uri,
-                        file = processed.file
+                try {
+                    val processed = ImageProcessor.process(
+                        context = context,
+                        uri = single.uri,
+                        prefix = "IMG_",
+                        extension = ".jpg",
+                        copyToCache = gallery.copyToCache,
+                        compression = gallery.compress,
                     )
-                )
+
+                    gallery.onResult?.invoke(
+                        ShadeResult.Single(uri = processed.uri, file = processed.file)
+                    )
+
+                } catch (e: ShadeFileSaveException) {
+                    gallery.onFailure?.invoke(
+                        ShadeError.FileSaveFailed(uri = e.uri, cause = e.cause)
+                    )
+                } catch (e: ShadeCompressionException) {
+                    gallery.onFailure?.invoke(
+                        ShadeError.CompressionFailed(
+                            source = ShadeError.CompressionSource.Image,
+                            cause = e.cause
+                        )
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    gallery.onFailure?.invoke(ShadeError.Unknown(e))
+                }
             }
         }
 
@@ -77,24 +88,39 @@ internal class ComposeGalleryHandler(
 
             val multiple = result as ShadeResult.Multiple
             val gallery = config.image?.gallery ?: return@onResult
+            val uris = multiple.items.map { it.uri }
 
             scope.launch {
+                try {
+                    val items = ImageProcessor.process(
+                        context = context,
+                        uris = uris,
+                        prefix = "IMG_",
+                        extension = ".jpg",
+                        copyToCache = gallery.copyToCache,
+                        compression = gallery.compress
+                    )
 
-//                val existingFiles = multiple.items.map { it.file }
+                    gallery.onResult?.invoke(ShadeResult.Multiple(items))
 
-                val items = ImageProcessor.process(
-                    context = context,
-                    uris = multiple.items.map { it.uri },
-//                    files = existingFiles.takeIf { list -> list.any { it != null } },
-                    prefix = "IMG_",
-                    extension = ".jpg",
-                    copyToCache = gallery.copyToCache,
-                    compression = gallery.compress
-                )
-
-                gallery.onResult?.invoke(
-                    ShadeResult.Multiple(items)
-                )
+                } catch (e: ShadeFileSaveException) {
+                    gallery.onFailure?.invoke(
+                        ShadeError.FileSaveFailed(uris = e.uris, cause = e.cause)
+                    )
+                } catch (e: ShadeCompressionException) {
+                    val failedUris = e.failedIndices.mapNotNull { uris.getOrNull(it) }
+                    gallery.onFailure?.invoke(
+                        ShadeError.CompressionFailed(
+                            source = ShadeError.CompressionSource.Image,
+                            cause = e.cause,
+                            failedUris = failedUris
+                        )
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    gallery.onFailure?.invoke(ShadeError.Unknown(e))
+                }
             }
         }
 
@@ -110,22 +136,36 @@ internal class ComposeGalleryHandler(
             val gallery = config.video?.gallery ?: return@onResult
 
             scope.launch {
-
-                val processed = VideoProcessor.process(
-                    context = context,
-                    uri = single.uri,
-                    prefix = "VID_",
-                    extension = ".mp4",
-                    copyToCache = gallery.copyToCache,
-                    compression = gallery.compress
-                )
-
-                gallery.onResult?.invoke(
-                    ShadeResult.Single(
-                        uri = processed.uri,
-                        file = processed.file
+                try {
+                    val processed = VideoProcessor.process(
+                        context = context,
+                        uri = single.uri,
+                        prefix = "VID_",
+                        extension = ".mp4",
+                        copyToCache = gallery.copyToCache,
+                        compression = gallery.compress
                     )
-                )
+
+                    gallery.onResult?.invoke(
+                        ShadeResult.Single(uri = processed.uri, file = processed.file)
+                    )
+
+                } catch (e: ShadeFileSaveException) {
+                    gallery.onFailure?.invoke(
+                        ShadeError.FileSaveFailed(uri = single.uri, cause = e.cause)
+                    )
+                } catch (e: ShadeCompressionException) {
+                    gallery.onFailure?.invoke(
+                        ShadeError.CompressionFailed(
+                            source = ShadeError.CompressionSource.Video,
+                            cause = e.cause
+                        )
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    gallery.onFailure?.invoke(ShadeError.Unknown(e))
+                }
             }
         }
 
@@ -134,29 +174,43 @@ internal class ComposeGalleryHandler(
         }
 
         // ── Video multi ─────────────────────────────────────────────────────────
-
         videoGalleryMultiCallback.onResult = onResult@{ result ->
 
             val multiple = result as ShadeResult.Multiple
             val gallery = config.video?.gallery ?: return@onResult
+            val uris = multiple.items.map { it.uri }
 
             scope.launch {
+                try {
+                    val items = VideoProcessor.process(
+                        context = context,
+                        uris = uris,
+                        prefix = "VID_",
+                        extension = ".mp4",
+                        copyToCache = gallery.copyToCache,
+                        compression = gallery.compress
+                    )
 
-//                val existingFiles = multiple.items.map { it.file }
+                    gallery.onResult?.invoke(ShadeResult.Multiple(items))
 
-                val items = VideoProcessor.process(
-                    context = context,
-                    uris = multiple.items.map{ it.uri },
-//                    files = existingFiles.takeIf { list-> list.any{ it != null } },
-                    prefix = "VID_",
-                    extension = ".mp4",
-                    copyToCache = gallery.copyToCache,
-                    compression = gallery.compress
-                )
-                
-                gallery.onResult?.invoke(
-                    ShadeResult.Multiple(items)
-                )
+                } catch (e: ShadeFileSaveException) {
+                    gallery.onFailure?.invoke(
+                        ShadeError.FileSaveFailed(uris = e.uris, cause = e.cause)
+                    )
+                } catch (e: ShadeCompressionException) {
+                    val failedUris = e.failedIndices.mapNotNull { uris.getOrNull(it) }
+                    gallery.onFailure?.invoke(
+                        ShadeError.CompressionFailed(
+                            source = ShadeError.CompressionSource.Video,
+                            cause = e.cause,
+                            failedUris = failedUris
+                        )
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    gallery.onFailure?.invoke(ShadeError.Unknown(e))
+                }
             }
         }
 
@@ -167,23 +221,20 @@ internal class ComposeGalleryHandler(
         // ── Media permission result ────────────────────────────────────────────
 
         permCallbacks.onMedia = { granted ->
-
             if (granted) {
                 launchVideoGallery()
             } else {
-
                 val perm = PermissionHelper.readVideoPermission()
-
                 val error =
                     if (PermissionHelper.shouldShowRationale(context, perm))
                         ShadeError.PermissionDenied
                     else
                         ShadeError.PermissionPermanentlyDenied
-
                 config.video?.gallery?.onFailure?.invoke(error)
             }
         }
     }
+
     fun handleImageGallery() {
         val galleryConfig = config.image?.gallery ?: return
         if (galleryConfig.multiSelect?.enabled == true)

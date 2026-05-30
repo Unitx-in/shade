@@ -6,6 +6,8 @@ import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.compressor.VideoCompressor
 import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.result.ShadeCompressionException
+import com.unitx.shade_core.common.result.ShadeFileSaveException
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,52 +15,6 @@ import java.io.File
 import java.io.FileOutputStream
 
 internal object VideoProcessor {
-
-    suspend fun process(
-        context: Context,
-        uri: Uri,
-        file: File? = null,
-        prefix: String,
-        extension: String,
-        copyToCache: CacheConfig?,
-        compression: CompressionConfig?,
-    ): ShadeResult.ShadeMedia = withContext(Dispatchers.IO) {
-
-        val processedFile =
-            if (compression?.enabled == true) {
-
-                compressFromUri(
-                    context = context,
-                    uri = uri,
-                    prefix = prefix,
-                    extension = extension,
-                    compression = compression
-                )
-
-            } else file ?: if (copyToCache?.enabled == true) {
-
-                FileHelper.copyUriToCache(
-                    context = context,
-                    uri = uri,
-                    prefix = prefix,
-                    extension = extension,
-                    onProgress = copyToCache.onProgress
-                )
-
-            } else null
-
-        val finalUri =
-            if (processedFile != null && file == null) {
-                FileHelper.getUriFromFile(context, processedFile)
-            } else {
-                uri
-            }
-
-        return@withContext ShadeResult.ShadeMedia(
-            uri = finalUri,
-            file = processedFile
-        )
-    }
 
     suspend fun process(
         context: Context,
@@ -71,7 +27,6 @@ internal object VideoProcessor {
     ): List<ShadeResult.ShadeMedia> = withContext(Dispatchers.IO) {
 
         val processedFiles = if (compression?.enabled == true) {
-
             compressFromUri(
                 context = context,
                 uris = uris,
@@ -79,17 +34,17 @@ internal object VideoProcessor {
                 extension = extension,
                 compression = compression
             )
-
         } else files ?: if (copyToCache?.enabled == true) {
-
-            FileHelper.copyUriToCache(
+            val copiedFiles = FileHelper.copyUriToCache(
                 context = context,
                 uris = uris,
                 prefix = prefix,
                 extension = extension,
                 onProgress = copyToCache.onProgress
             )
-
+            val failedUris = copiedFiles.mapIndexedNotNull { i, f -> if (f == null) uris.getOrNull(i) else null }
+            if (failedUris.isNotEmpty()) throw ShadeFileSaveException(uris = failedUris)
+            copiedFiles
         } else null
 
         return@withContext processedFiles?.mapIndexed { index, processedFile ->
@@ -112,6 +67,91 @@ internal object VideoProcessor {
         }
     }
 
+    suspend fun process(
+        context: Context,
+        uri: Uri,
+        file: File? = null,
+        prefix: String,
+        extension: String,
+        copyToCache: CacheConfig?,
+        compression: CompressionConfig?,
+    ): ShadeResult.ShadeMedia = withContext(Dispatchers.IO) {
+
+        val processedFile =
+            if (compression?.enabled == true) {
+                compressFromUri(
+                    context = context,
+                    uri = uri,
+                    prefix = prefix,
+                    extension = extension,
+                    compression = compression
+                )
+            } else file ?: if (copyToCache?.enabled == true) {
+                FileHelper.copyUriToCache(
+                    context = context,
+                    uri = uri,
+                    prefix = prefix,
+                    extension = extension,
+                    onProgress = copyToCache.onProgress
+                ) ?: throw ShadeFileSaveException(uri = uri)
+            } else null
+
+        val finalUri =
+            if (processedFile != null && file == null) {
+                FileHelper.getUriFromFile(context, processedFile)
+            } else {
+                uri
+            }
+
+        return@withContext ShadeResult.ShadeMedia(
+            uri = finalUri,
+            file = processedFile
+        )
+    }
+
+    // Single URI version:
+    private suspend fun compressFromUri(
+        context: Context,
+        uri: Uri,
+        prefix: String,
+        extension: String,
+        compression: CompressionConfig
+    ): File? {
+        val sourceFile = withContext(Dispatchers.IO) {
+            File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
+        }
+
+        try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(sourceFile).use { output ->
+                    input.copyTo(output)
+                }
+            } ?: throw ShadeCompressionException(
+                cause = IllegalStateException("openInputStream returned null for uri: $uri")
+            )
+
+            val result = VideoCompressor.compress(
+                input = sourceFile,
+                params = VideoCompressor.CompressionParams(
+                    videoBitrate = compression.videoBitrate,
+                    frameRate = compression.frameRate,
+                    maxWidth = compression.maxWidth,
+                    maxHeight = compression.maxHeight,
+                    keyFrameInterval = compression.keyFrameInterval
+                ),
+                onProgress = compression.onProgress
+            )
+
+            return result.getOrElse { cause ->
+                throw ShadeCompressionException(cause)
+            }
+
+        } finally {
+            sourceFile.delete()
+        }
+    }
+
+    // Multi URI version:
     private suspend fun compressFromUri(
         context: Context,
         uris: List<Uri>,
@@ -124,12 +164,14 @@ internal object VideoProcessor {
             val sourceFile = File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
             context.contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(sourceFile).use { input.copyTo(it) }
-            }
+            } ?: throw ShadeCompressionException(
+                cause = IllegalStateException("openInputStream returned null for uri: $uri")
+            )
             sourceFile
         }
 
         try {
-            VideoCompressor.compress(
+            val results = VideoCompressor.compress(
                 inputs = sourceFiles,
                 params = VideoCompressor.CompressionParams(
                     videoBitrate = compression.videoBitrate,
@@ -140,45 +182,22 @@ internal object VideoProcessor {
                 ),
                 onProgress = compression.onProgress
             )
+
+            val failures = results.mapIndexedNotNull { index, result ->
+                result.exceptionOrNull()?.let { index to it }
+            }
+
+            if (failures.isNotEmpty()) {
+                throw ShadeCompressionException(
+                    cause = failures.first().second,
+                    failedIndices = failures.map { it.first }
+                )
+            }
+
+            results.map { it.getOrNull() }
+
         } finally {
             sourceFiles.forEach { it.delete() }
-        }
-    }
-
-    private suspend fun compressFromUri(
-        context: Context,
-        uri: Uri,
-        prefix: String,
-        extension: String,
-        compression: CompressionConfig
-    ): File? {
-
-        val sourceFile = withContext(Dispatchers.IO) {
-            File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
-        }
-
-        try {
-
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(sourceFile).use { output ->
-                    input.copyTo(output)
-                }
-            } ?: return null
-
-            return VideoCompressor.compress(
-                input = sourceFile,
-                params = VideoCompressor.CompressionParams(
-                    videoBitrate = compression.videoBitrate,
-                    frameRate = compression.frameRate,
-                    maxWidth = compression.maxWidth,
-                    maxHeight = compression.maxHeight,
-                    keyFrameInterval = compression.keyFrameInterval
-                ),
-                onProgress = compression.onProgress
-            )
-
-        } finally {
-            sourceFile.delete()
         }
     }
 }

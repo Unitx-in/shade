@@ -17,6 +17,8 @@ import com.unitx.shade_core.common.processor.VideoProcessor
 import com.unitx.shade_core.common.config.extend.CompressionConfig
 import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.base.GalleryConfig
+import com.unitx.shade_core.common.result.ShadeCompressionException
+import com.unitx.shade_core.common.result.ShadeFileSaveException
 
 /**
  * Handles all gallery-related media flows — image and video picking,
@@ -42,11 +44,12 @@ internal class GalleryHandler(
 
                 val permission = PermissionHelper.readVideoPermission()
 
-                val error =
-                    if (PermissionHelper.shouldShowRationale(context, permission))
-                        ShadeError.PermissionDenied
-                    else
-                        ShadeError.PermissionPermanentlyDenied
+                val error = if (PermissionHelper.shouldShowRationale(
+                        context,
+                        permission
+                    )
+                ) ShadeError.PermissionDenied
+                else ShadeError.PermissionPermanentlyDenied
 
                 config.video?.gallery?.onFailure?.invoke(error)
                 return@result
@@ -57,8 +60,7 @@ internal class GalleryHandler(
 
         registry.onImageGallerySingle = onImageGallerySingle@{ uri ->
 
-            val gallery = config.image?.gallery
-                ?: return@onImageGallerySingle
+            val gallery = config.image?.gallery ?: return@onImageGallerySingle
 
             handleSingleGalleryResult(
                 uri = uri,
@@ -84,8 +86,7 @@ internal class GalleryHandler(
 
         registry.onVideoGallerySingle = onVideoGallerySingle@{ uri ->
 
-            val gallery = config.video?.gallery
-                ?: return@onVideoGallerySingle
+            val gallery = config.video?.gallery ?: return@onVideoGallerySingle
 
             handleSingleGalleryResult(
                 uri = uri,
@@ -111,8 +112,7 @@ internal class GalleryHandler(
 
         registry.onImageGalleryMulti = onImageGalleryMulti@{ uris ->
 
-            val gallery = config.image?.gallery
-                ?: return@onImageGalleryMulti
+            val gallery = config.image?.gallery ?: return@onImageGalleryMulti
 
             handleMultiGalleryResult(
                 uris = uris,
@@ -138,8 +138,7 @@ internal class GalleryHandler(
 
         registry.onVideoGalleryMulti = onVideoGalleryMulti@{ uris ->
 
-            val gallery = config.video?.gallery
-                ?: return@onVideoGalleryMulti
+            val gallery = config.video?.gallery ?: return@onVideoGalleryMulti
 
             handleMultiGalleryResult(
                 uris = uris,
@@ -166,10 +165,10 @@ internal class GalleryHandler(
 
     fun handleImageGallery() {
         val galleryConfig = config.image?.gallery ?: return
-        if (galleryConfig.multiSelect?.enabled  == true)
-            registry.imageGalleryMultiLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
-        else
-            registry.imageGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+        if (galleryConfig.multiSelect?.enabled == true) registry.imageGalleryMultiLauncher.launch(
+            PickVisualMediaRequest(PickVisualMedia.ImageOnly)
+        )
+        else registry.imageGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
     }
 
     fun handleVideoGallery() {
@@ -190,46 +189,33 @@ internal class GalleryHandler(
         extension: String,
         copyToCache: CacheConfig?,
         processor: suspend (
-            uri: Uri,
-            prefix: String,
-            extension: String,
-            copyToCache: CacheConfig?,
-            compression: CompressionConfig?
+            uri: Uri, prefix: String, extension: String, copyToCache: CacheConfig?, compression: CompressionConfig?
         ) -> ShadeResult.ShadeMedia,
         compression: CompressionConfig?,
         onFailure: ((ShadeError) -> Unit)?,
         onResult: ((ShadeResult.Single) -> Unit)?
     ) {
         scope.launch {
-
             if (uri == null) {
                 onFailure?.invoke(ShadeError.PickCancelled)
                 return@launch
             }
 
-            val media = processor(
-                uri,
-                prefix,
-                extension,
-                copyToCache,
-                compression
-            )
-
-            if (compression?.enabled == true && media.file == null) {
-
-                onFailure?.invoke(
-                    ShadeError.CompressionFailed
-                )
-
-                return@launch
+            try {
+                val media = processor(uri, prefix, extension, copyToCache, compression)
+                onResult?.invoke(ShadeResult.Single(uri = media.uri, file = media.file))
+            } catch (e: ShadeFileSaveException) {
+                onFailure?.invoke(ShadeError.FileSaveFailed(uri = e.uri))
+            } catch (e: ShadeCompressionException) {
+                val source = when (prefix) {
+                    "VID_" -> ShadeError.CompressionSource.Video
+                    else -> ShadeError.CompressionSource.Image
+                }
+                onFailure?.invoke(ShadeError.CompressionFailed(source = source, cause = e.cause))
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                onFailure?.invoke(ShadeError.Unknown(e))
             }
-
-            onResult?.invoke(
-                ShadeResult.Single(
-                    uri = media.uri,
-                    file = media.file
-                )
-            )
         }
     }
 
@@ -239,45 +225,41 @@ internal class GalleryHandler(
         extension: String,
         copyToCache: CacheConfig?,
         processor: suspend (
-            uris: List<Uri>,
-            prefix: String,
-            extension: String,
-            copyToCache: CacheConfig?,
-            compression: CompressionConfig?
+            uris: List<Uri>, prefix: String, extension: String, copyToCache: CacheConfig?, compression: CompressionConfig?
         ) -> List<ShadeResult.ShadeMedia>,
         compression: CompressionConfig?,
         onFailure: ((ShadeError) -> Unit)?,
         onResult: ((ShadeResult.Multiple) -> Unit)?
     ) {
         scope.launch {
-
             if (uris.isEmpty()) {
                 onFailure?.invoke(ShadeError.PickCancelled)
                 return@launch
             }
 
-            val items = processor(
-                uris,
-                prefix,
-                extension,
-                copyToCache,
-                compression
-            )
-
-            if (compression?.enabled == true && items.any { it.file == null }) {
-                onFailure?.invoke(ShadeError.CompressionFailed)
-                return@launch
+            try {
+                val items = processor(uris, prefix, extension, copyToCache, compression)
+                onResult?.invoke(ShadeResult.Multiple(items))
+            } catch (e: ShadeFileSaveException) {
+                onFailure?.invoke(ShadeError.FileSaveFailed(uris = e.uris))
+            } catch (e: ShadeCompressionException) {
+                val source = when (prefix) {
+                    "VID_" -> ShadeError.CompressionSource.Video
+                    else -> ShadeError.CompressionSource.Image
+                }
+                onFailure?.invoke(ShadeError.CompressionFailed(source = source, cause = e.cause))
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                onFailure?.invoke(ShadeError.Unknown(e))
             }
-
-            onResult?.invoke(ShadeResult.Multiple(items))
         }
     }
 
     private fun launchVideoGallery() {
         val galleryConfig = config.video?.gallery ?: return
-        if (galleryConfig.multiSelect?.enabled == true)
-            registry.videoGalleryMultiLauncher.launch(PickVisualMediaRequest(PickVisualMedia.VideoOnly))
-        else
-            registry.videoGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.VideoOnly))
+        if (galleryConfig.multiSelect?.enabled == true) registry.videoGalleryMultiLauncher.launch(
+            PickVisualMediaRequest(PickVisualMedia.VideoOnly)
+        )
+        else registry.videoGallerySingleLauncher.launch(PickVisualMediaRequest(PickVisualMedia.VideoOnly))
     }
 }
