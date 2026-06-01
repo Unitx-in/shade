@@ -284,12 +284,15 @@ Handle failures in `onFailure { }`:
 ```kotlin
 onFailure { error ->
     when (error) {
-        ShadeError.PermissionDenied            -> showRationale()
-        ShadeError.PermissionPermanentlyDenied -> openAppSettings()
-        ShadeError.PickCancelled               -> Unit
-        ShadeError.CompressionFailed           -> showError("Compression failed")
-        ShadeError.FileSaveFailed              -> showError("Could not save file")
-        else                                   -> showError("Something went wrong")
+        ShadeError.PermissionDenied             -> showRationale()
+        ShadeError.PermissionPermanentlyDenied  -> openAppSettings()
+        ShadeError.PickCancelled                -> Unit
+        is ShadeError.CaptureFailed             -> log(error.reason)
+        is ShadeError.CompressionFailed         -> showError("Compression failed: ${error.source}")
+        is ShadeError.FileSaveFailed            -> showError("Could not save: ${error.allFailed.size} file(s)")
+        is ShadeError.DocumentProcessingFailed  -> showError("Document failed: ${error.failedUris.size} file(s)")
+        is ShadeError.Unknown                   -> showError("Something went wrong")
+        else                                    -> showError("Something went wrong")
     }
 }
 ```
