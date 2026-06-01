@@ -54,16 +54,9 @@ internal object VideoProcessor {
             } else {
                 originalUri
             }
-
-            ShadeResult.ShadeMedia(
-                uri = finalUri,
-                file = processedFile
-            )
+            ShadeResult.ShadeMedia(uri = finalUri, file = processedFile)
         } ?: uris.map { uri ->
-            ShadeResult.ShadeMedia(
-                uri = uri,
-                file = null
-            )
+            ShadeResult.ShadeMedia(uri = uri, file = null)
         }
     }
 
@@ -77,39 +70,33 @@ internal object VideoProcessor {
         compression: CompressionConfig?,
     ): ShadeResult.ShadeMedia = withContext(Dispatchers.IO) {
 
-        val processedFile =
-            if (compression?.enabled == true) {
-                compressFromUri(
-                    context = context,
-                    uri = uri,
-                    prefix = prefix,
-                    extension = extension,
-                    compression = compression
-                )
-            } else file ?: if (copyToCache?.enabled == true) {
-                FileHelper.copyUriToCache(
-                    context = context,
-                    uri = uri,
-                    prefix = prefix,
-                    extension = extension,
-                    onProgress = copyToCache.onProgress
-                ) ?: throw ShadeFileSaveException(uri = uri)
-            } else null
+        val processedFile = if (compression?.enabled == true) {
+            compressFromUri(
+                context = context,
+                uri = uri,
+                prefix = prefix,
+                extension = extension,
+                compression = compression
+            )
+        } else file ?: if (copyToCache?.enabled == true) {
+            FileHelper.copyUriToCache(
+                context = context,
+                uri = uri,
+                prefix = prefix,
+                extension = extension,
+                onProgress = copyToCache.onProgress
+            ) ?: throw ShadeFileSaveException(uri = uri)
+        } else null
 
-        val finalUri =
-            if (processedFile != null && file == null) {
-                FileHelper.getUriFromFile(context, processedFile)
-            } else {
-                uri
-            }
+        val finalUri = if (processedFile != null && file == null) {
+            FileHelper.getUriFromFile(context, processedFile)
+        } else {
+            uri
+        }
 
-        return@withContext ShadeResult.ShadeMedia(
-            uri = finalUri,
-            file = processedFile
-        )
+        return@withContext ShadeResult.ShadeMedia(uri = finalUri, file = processedFile)
     }
 
-    // Single URI version:
     private suspend fun compressFromUri(
         context: Context,
         uri: Uri,
@@ -117,9 +104,7 @@ internal object VideoProcessor {
         extension: String,
         compression: CompressionConfig
     ): File? {
-        val sourceFile = withContext(Dispatchers.IO) {
-            File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
-        }
+        val sourceFile = File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
 
         try {
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -131,6 +116,7 @@ internal object VideoProcessor {
             )
 
             val result = VideoCompressor.compress(
+                context = context,
                 input = sourceFile,
                 params = VideoCompressor.CompressionParams(
                     videoBitrate = compression.videoBitrate,
@@ -142,16 +128,13 @@ internal object VideoProcessor {
                 onProgress = compression.onProgress
             )
 
-            return result.getOrElse { cause ->
-                throw ShadeCompressionException(cause)
-            }
+            return result.getOrElse { cause -> throw ShadeCompressionException(cause) }
 
         } finally {
             sourceFile.delete()
         }
     }
 
-    // Multi URI version:
     private suspend fun compressFromUri(
         context: Context,
         uris: List<Uri>,
@@ -172,6 +155,7 @@ internal object VideoProcessor {
 
         try {
             val results = VideoCompressor.compress(
+                context = context,
                 inputs = sourceFiles,
                 params = VideoCompressor.CompressionParams(
                     videoBitrate = compression.videoBitrate,

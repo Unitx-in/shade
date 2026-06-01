@@ -152,7 +152,7 @@ internal class ComposeGalleryHandler(
 
                 } catch (e: ShadeFileSaveException) {
                     gallery.onFailure?.invoke(
-                        ShadeError.FileSaveFailed(uri = single.uri, cause = e.cause)
+                        ShadeError.FileSaveFailed(uri = e.uri, cause = e.cause)
                     )
                 } catch (e: ShadeCompressionException) {
                     gallery.onFailure?.invoke(

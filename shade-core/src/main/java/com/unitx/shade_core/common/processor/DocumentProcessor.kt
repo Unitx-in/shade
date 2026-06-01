@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal object DocumentProcessor {
+
     suspend fun process(
         context: Context,
         uri: Uri,
@@ -45,28 +46,26 @@ internal object DocumentProcessor {
         copyToCache: CacheConfig?,
     ): List<ShadeResult.ShadeMedia> = withContext(Dispatchers.IO) {
 
-        val processedFiles = if (copyToCache?.enabled == true) {
-            val files = FileHelper.copyUriToCache(
-                context = context,
-                uris = uris,
-                prefix = prefix,
-                extensions = extensions,
-                onProgress = copyToCache.onProgress
-            )
-            val failedUris = files.mapIndexedNotNull { i, f -> if (f == null) uris.getOrNull(i) else null }
-            if (failedUris.isNotEmpty()) throw ShadeFileSaveException(uris = failedUris)
-            files
-        } else null
+        if (copyToCache?.enabled != true) {
+            return@withContext uris.map { uri -> ShadeResult.ShadeMedia(uri = uri, file = null) }
+        }
 
-        processedFiles?.mapIndexed { index, processedFile ->
-            val finalUri = if (processedFile != null) {
-                FileHelper.getUriFromFile(context, processedFile)
-            } else {
-                uris[index]
-            }
-            ShadeResult.ShadeMedia(uri = finalUri, file = processedFile)
-        } ?: uris.map { uri ->
-            ShadeResult.ShadeMedia(uri = uri, file = null)
+        val files = FileHelper.copyUriToCache(
+            context = context,
+            uris = uris,
+            prefix = prefix,
+            extensions = extensions,
+            onProgress = copyToCache.onProgress
+        )
+
+        val failedUris = files.mapIndexedNotNull { i, f -> if (f == null) uris.getOrNull(i) else null }
+        if (failedUris.isNotEmpty()) throw ShadeFileSaveException(uris = failedUris)
+
+        // All files are non-null here — throw above guarantees it
+        files.mapIndexed { index, file ->
+            val savedFile = file!!
+            val finalUri = FileHelper.getUriFromFile(context, savedFile)
+            ShadeResult.ShadeMedia(uri = finalUri, file = savedFile)
         }
     }
 }

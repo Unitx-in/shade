@@ -1,12 +1,12 @@
 package com.unitx.shade_core.common.compressor
 
+import android.content.Context
 import com.otaliastudios.transcoder.Transcoder
 import com.otaliastudios.transcoder.TranscoderListener
 import com.otaliastudios.transcoder.resize.AtMostResizer
 import com.otaliastudios.transcoder.resize.PassThroughResizer
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy
 import com.unitx.shade_core.common.config.extend.ProgressConfig
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
@@ -24,12 +24,14 @@ internal object VideoCompressor {
     )
 
     suspend fun compress(
+        context: Context,
         inputs: List<File>,
         params: CompressionParams = CompressionParams(),
         onProgress: ((ProgressConfig.Compressing) -> Unit)? = null,
     ): List<Result<File>> {
         return inputs.mapIndexed { index, file ->
             compress(
+                context = context,
                 input = file,
                 params = params,
                 onProgress = onProgress,
@@ -39,13 +41,14 @@ internal object VideoCompressor {
     }
 
     suspend fun compress(
+        context: Context,
         input: File,
         params: CompressionParams = CompressionParams(),
         onProgress: ((ProgressConfig.Compressing) -> Unit)? = null,
         fileNumber: Int = 1,
     ): Result<File> = suspendCancellableCoroutine { continuation ->
 
-        val output = File.createTempFile("VID_CMP_", ".mp4", input.parentFile)
+        val output = File.createTempFile("VID_CMP_", ".mp4", context.cacheDir)
 
         val future = Transcoder.into(output.absolutePath)
             .addDataSource(input.absolutePath)
@@ -65,16 +68,19 @@ internal object VideoCompressor {
                     val percent = (progress * 100).toInt().coerceIn(0, 99)
                     onProgress?.invoke(ProgressConfig.Compressing(percent, fileNumber))
                 }
+
                 override fun onTranscodeCompleted(successCode: Int) {
                     onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber))
                     continuation.resume(Result.success(output))
                 }
+
                 override fun onTranscodeCanceled() {
                     output.delete()
-                    continuation.resume(
-                        Result.failure(CancellationException("Video transcoding was cancelled"))
+                    continuation.resumeWithException(
+                        CancellationException("Video transcoding was cancelled")
                     )
                 }
+
                 override fun onTranscodeFailed(exception: Throwable) {
                     output.delete()
                     continuation.resume(Result.failure(exception))

@@ -63,10 +63,12 @@ internal class ComposeCameraHandler(
                     )
 
                 } catch (e: ShadeFileSaveException) {
+                    captureState.file?.delete()
                     cameraConfig.onFailure?.invoke(
                         ShadeError.FileSaveFailed(uri = e.uri, cause = e.cause)
                     )
                 } catch (e: ShadeCompressionException) {
+                    captureState.file?.delete()
                     cameraConfig.onFailure?.invoke(
                         ShadeError.CompressionFailed(
                             source = ShadeError.CompressionSource.Image,
@@ -74,8 +76,10 @@ internal class ComposeCameraHandler(
                         )
                     )
                 } catch (e: CancellationException) {
+                    captureState.file?.delete()
                     throw e
                 } catch (e: Exception) {
+                    captureState.file?.delete()
                     cameraConfig.onFailure?.invoke(
                         ShadeError.CaptureFailed(
                             reason = ShadeError.CaptureFailureReason.ProcessorFailed,

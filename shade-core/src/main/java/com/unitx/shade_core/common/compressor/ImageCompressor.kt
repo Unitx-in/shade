@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import androidx.core.graphics.scale
 import androidx.exifinterface.media.ExifInterface
-import com.unitx.shade_core.common.compressor.CompressFormat
 import com.unitx.shade_core.common.config.extend.ProgressConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -67,7 +66,7 @@ internal object ImageCompressor {
                 )
             }
 
-            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(10, fileNumber)) }
+            onProgress?.invoke(ProgressConfig.Compressing(10, fileNumber))
 
             val sampleSize = calculateSampleSize(originalWidth, originalHeight, maxWidth, maxHeight)
 
@@ -77,27 +76,26 @@ internal object ImageCompressor {
             }
 
             var bitmap = BitmapFactory.decodeFile(input.absolutePath, decodeOptions)
-            // ← was: ?: return@withContext null
                 ?: return@withContext Result.failure(
                     IllegalStateException("BitmapFactory returned null for file ${input.name}")
                 )
 
-            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(40, fileNumber)) }
+            onProgress?.invoke(ProgressConfig.Compressing(40, fileNumber))
 
             bitmap = correctOrientation(bitmap, input.absolutePath)
 
-            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(60, fileNumber)) }
+            onProgress?.invoke(ProgressConfig.Compressing(60, fileNumber))
 
-            val finalBitmap = exactResizeIfNeeded(bitmap, maxWidth, maxHeight)
+            val finalBitmap = exactResizeIfNeeded(bitmap, originalWidth, originalHeight, maxWidth, maxHeight)
             if (finalBitmap != bitmap) bitmap.recycle()
 
-            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(75, fileNumber)) }
+            onProgress?.invoke(ProgressConfig.Compressing(75, fileNumber))
 
             val compressedFile = File.createTempFile(
                 "IMG_CMP_",
                 when (outputFormat) {
                     CompressFormat.JPEG -> ".jpg"
-                    CompressFormat.PNG  -> ".png"
+                    CompressFormat.PNG -> ".png"
                 },
                 context.cacheDir
             )
@@ -105,15 +103,16 @@ internal object ImageCompressor {
             FileOutputStream(compressedFile).use { outputStream ->
                 val format = when (outputFormat) {
                     CompressFormat.JPEG -> Bitmap.CompressFormat.JPEG
-                    CompressFormat.PNG  -> Bitmap.CompressFormat.PNG
+                    CompressFormat.PNG -> Bitmap.CompressFormat.PNG
                 }
-                val effectiveQuality = if (outputFormat == CompressFormat.JPEG) quality.coerceIn(0, 100) else 100
+                val effectiveQuality =
+                    if (outputFormat == CompressFormat.JPEG) quality.coerceIn(0, 100) else 100
                 finalBitmap.compress(format, effectiveQuality, outputStream)
             }
 
             finalBitmap.recycle()
 
-            withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber)) }
+            onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber))
 
             Result.success(compressedFile)
 
@@ -129,40 +128,29 @@ internal object ImageCompressor {
         maxWidth: Int?,
         maxHeight: Int?
     ): Int {
-
-        if (maxWidth == null && maxHeight == null) {
-            return 1
-        }
+        if (maxWidth == null && maxHeight == null) return 1
 
         val requestedWidth = maxWidth ?: originalWidth
         val requestedHeight = maxHeight ?: originalHeight
 
         var sampleSize = 1
-
         while (
             originalWidth / (sampleSize * 2) >= requestedWidth &&
             originalHeight / (sampleSize * 2) >= requestedHeight
         ) {
             sampleSize *= 2
         }
-
         return sampleSize
     }
 
-    private fun correctOrientation(
-        bitmap: Bitmap,
-        filePath: String
-    ): Bitmap {
-
+    private fun correctOrientation(bitmap: Bitmap, filePath: String): Bitmap {
         val exif = ExifInterface(filePath)
-
         val orientation = exif.getAttributeInt(
             ExifInterface.TAG_ORIENTATION,
             ExifInterface.ORIENTATION_NORMAL
         )
 
         val matrix = Matrix()
-
         when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
             ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
@@ -170,51 +158,35 @@ internal object ImageCompressor {
             else -> return bitmap
         }
 
-        val rotated = Bitmap.createBitmap(
-            bitmap,
-            0,
-            0,
-            bitmap.width,
-            bitmap.height,
-            matrix,
-            true
-        )
-
-        if (rotated != bitmap) {
-            bitmap.recycle()
-        }
-
+        val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (rotated != bitmap) bitmap.recycle()
         return rotated
     }
 
     private fun exactResizeIfNeeded(
         bitmap: Bitmap,
+        originalWidth: Int,
+        originalHeight: Int,
         maxWidth: Int?,
         maxHeight: Int?
     ): Bitmap {
+        var newWidth = originalWidth
+        var newHeight = originalHeight
 
-        val width = bitmap.width
-        val height = bitmap.height
-
-        var newWidth = width
-        var newHeight = height
-
-        if (maxWidth != null && width > maxWidth) {
+        if (maxWidth != null && newWidth > maxWidth) {
             newWidth = maxWidth
-            newHeight = (height * maxWidth.toFloat() / width).toInt()
+            newHeight = (originalHeight * maxWidth.toFloat() / originalWidth).toInt()
         }
 
         if (maxHeight != null && newHeight > maxHeight) {
             newHeight = maxHeight
-            newWidth = (newWidth * maxHeight.toFloat() / newHeight).toInt()
+            newWidth = (originalWidth * maxHeight.toFloat() / originalHeight).toInt()
         }
 
-        return if (newWidth == width && newHeight == height) {
+        return if (newWidth == originalWidth && newHeight == originalHeight) {
             bitmap
         } else {
             bitmap.scale(newWidth, newHeight)
         }
     }
-
-
 }

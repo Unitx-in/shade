@@ -19,6 +19,7 @@ import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.base.GalleryConfig
 import com.unitx.shade_core.common.result.ShadeCompressionException
 import com.unitx.shade_core.common.result.ShadeFileSaveException
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Handles all gallery-related media flows — image and video picking,
@@ -212,8 +213,9 @@ internal class GalleryHandler(
                     else -> ShadeError.CompressionSource.Image
                 }
                 onFailure?.invoke(ShadeError.CompressionFailed(source = source, cause = e.cause))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
                 onFailure?.invoke(ShadeError.Unknown(e))
             }
         }
@@ -248,8 +250,9 @@ internal class GalleryHandler(
                     else -> ShadeError.CompressionSource.Image
                 }
                 onFailure?.invoke(ShadeError.CompressionFailed(source = source, cause = e.cause))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
                 onFailure?.invoke(ShadeError.Unknown(e))
             }
         }

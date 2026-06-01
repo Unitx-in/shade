@@ -17,8 +17,10 @@ import java.io.File
 import com.unitx.shade_core.common.processor.ImageProcessor
 import com.unitx.shade_core.common.processor.VideoProcessor
 import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.result.ShadeCompressionException
 import com.unitx.shade_core.common.result.ShadeFileSaveException
 import kotlinx.coroutines.async
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Handles all camera-related media flows — image capture and video recording.
@@ -162,11 +164,20 @@ internal class CameraHandler(
                         uri = media.uri
                     )
                 )
+            } catch (e: CancellationException) {
+                file.delete()
+                throw e
             } catch (e: ShadeFileSaveException) {
                 file.delete()
                 onFailure?.invoke(ShadeError.FileSaveFailed(uri = e.uri))
+            } catch (e: ShadeCompressionException) {
+                file.delete()
+                val source = when (prefix) {
+                    "VID_" -> ShadeError.CompressionSource.Video
+                    else -> ShadeError.CompressionSource.Image
+                }
+                onFailure?.invoke(ShadeError.CompressionFailed(source = source, cause = e.cause))
             } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
                 file.delete()
                 onFailure?.invoke(
                     ShadeError.CaptureFailed(

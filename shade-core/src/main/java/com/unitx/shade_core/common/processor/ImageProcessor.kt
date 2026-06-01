@@ -6,7 +6,6 @@ import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.compressor.ImageCompressor
 import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.extend.CompressionConfig
-import com.unitx.shade_core.common.config.extend.ProgressConfig
 import com.unitx.shade_core.common.result.ShadeCompressionException
 import com.unitx.shade_core.common.result.ShadeFileSaveException
 import com.unitx.shade_core.common.result.ShadeResult
@@ -44,17 +43,13 @@ internal object ImageProcessor {
             ) ?: throw ShadeFileSaveException(uri = uri)
         } else null
 
-        val finalUri =
-            if (processedFile != null && file == null) {
-                FileHelper.getUriFromFile(context, processedFile)
-            } else {
-                uri
-            }
+        val finalUri = if (processedFile != null && file == null) {
+            FileHelper.getUriFromFile(context, processedFile)
+        } else {
+            uri
+        }
 
-        return@withContext ShadeResult.ShadeMedia(
-            uri = finalUri,
-            file = processedFile
-        )
+        return@withContext ShadeResult.ShadeMedia(uri = finalUri, file = processedFile)
     }
 
     suspend fun process(
@@ -94,29 +89,20 @@ internal object ImageProcessor {
             } else {
                 originalUri
             }
-
-            ShadeResult.ShadeMedia(
-                uri = finalUri,
-                file = processedFile
-            )
+            ShadeResult.ShadeMedia(uri = finalUri, file = processedFile)
         } ?: uris.map { uri ->
-            ShadeResult.ShadeMedia(
-                uri = uri,
-                file = null
-            )
+            ShadeResult.ShadeMedia(uri = uri, file = null)
         }
     }
 
-    // Single URI version:
     private suspend fun compressFromUri(
         context: Context,
         uri: Uri,
         prefix: String,
         compression: CompressionConfig,
     ): File? {
-        val sourceFile = withContext(Dispatchers.IO) {
-            File.createTempFile("${prefix}SRC_", ".tmp", context.cacheDir)
-        }
+        // No nested withContext — already running on Dispatchers.IO from process()
+        val sourceFile = File.createTempFile("${prefix}SRC_", ".tmp", context.cacheDir)
 
         try {
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -127,7 +113,6 @@ internal object ImageProcessor {
                 cause = IllegalStateException("openInputStream returned null for uri: $uri")
             )
 
-            // Unwrap Result — throw ShadeCompressionException on failure
             val result = ImageCompressor.compress(
                 context = context,
                 input = sourceFile,
@@ -138,16 +123,13 @@ internal object ImageProcessor {
                 onProgress = compression.onProgress
             )
 
-            return result.getOrElse { cause ->
-                throw ShadeCompressionException(cause)
-            }
+            return result.getOrElse { cause -> throw ShadeCompressionException(cause) }
 
         } finally {
             sourceFile.delete()
         }
     }
 
-    // Multi URI version:
     private suspend fun compressFromUri(
         context: Context,
         uris: List<Uri>,
@@ -176,7 +158,6 @@ internal object ImageProcessor {
                 outputFormat = compression.format,
             )
 
-            // Map each Result — collect failures, throw if any
             val failures = results.mapIndexedNotNull { index, result ->
                 result.exceptionOrNull()?.let { index to it }
             }
