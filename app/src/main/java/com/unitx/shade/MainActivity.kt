@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
                                         Toast.makeText(context, "Video captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
                                     }
                                     onFailure { error ->
+                                        Log.i("CameraResultError", error.toString())
                                         Toast.makeText(context, "$error", Toast.LENGTH_SHORT).show()
                                     }
                                 }

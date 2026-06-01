@@ -43,7 +43,7 @@ internal object VideoCompressor {
         params: CompressionParams = CompressionParams(),
         onProgress: ((ProgressConfig.Compressing) -> Unit)? = null,
         fileNumber: Int = 1,
-    ): Result<File> = suspendCancellableCoroutine { continuation ->  // ← Result<File> not File?
+    ): Result<File> = suspendCancellableCoroutine { continuation ->
 
         val output = File.createTempFile("VID_CMP_", ".mp4", input.parentFile)
 
@@ -67,18 +67,17 @@ internal object VideoCompressor {
                 }
                 override fun onTranscodeCompleted(successCode: Int) {
                     onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber))
-                    continuation.resume(Result.success(output))  // ← was: resume(output)
+                    continuation.resume(Result.success(output))
                 }
                 override fun onTranscodeCanceled() {
                     output.delete()
-                    // ← was: resume(null) which lost the cancellation reason
                     continuation.resume(
                         Result.failure(CancellationException("Video transcoding was cancelled"))
                     )
                 }
                 override fun onTranscodeFailed(exception: Throwable) {
                     output.delete()
-                    continuation.resume(Result.failure(exception))  // ← was: resumeWithException which crashes caller
+                    continuation.resume(Result.failure(exception))
                 }
             })
             .transcode()

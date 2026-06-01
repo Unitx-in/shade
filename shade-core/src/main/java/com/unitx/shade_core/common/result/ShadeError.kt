@@ -43,13 +43,6 @@ sealed class ShadeError {
         val cause: Throwable? = null
     ) : ShadeError()
 
-    enum class CaptureFailureReason {
-        ActivityResultFailed,  // success = false from ActivityResult
-        TempFileNull,          // tempCaptureFile was null when result arrived
-        TempUriNull,           // tempCaptureUri was null when result arrived
-        ProcessorFailed        // processor threw during image/video processing
-    }
-
     /** The picker was dismissed without a selection. */
     data object PickCancelled : ShadeError()
 
@@ -109,8 +102,6 @@ sealed class ShadeError {
             get() = failedUris.isNotEmpty()
     }
 
-    enum class CompressionSource { Image, Video }
-
     // ─── Document ────────────────────────────────────────────────────────────
 
     /**
@@ -134,4 +125,25 @@ sealed class ShadeError {
 
     /** Catch-all for unexpected exceptions. */
     data class Unknown(val throwable: Throwable? = null) : ShadeError()
+
+    /**
+     * Describes why a camera capture operation failed.
+     * Returned as part of [ShadeError.CaptureFailed].
+     */
+    enum class CaptureFailureReason {
+
+        /** The [ActivityResult] returned `success = false` — user cancelled or camera app failed. */
+        ActivityResultFailed,
+
+        /** The temporary capture file was `null` when the result arrived. */
+        TempFileNull,
+
+        /** The temporary capture URI was `null` when the result arrived. */
+        TempUriNull,
+
+        /** Capture succeeded but [ImageProcessor] or [VideoProcessor] threw during processing. */
+        ProcessorFailed
+    }
+
+    enum class CompressionSource { Image, Video }
 }

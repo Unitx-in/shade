@@ -49,15 +49,28 @@ internal fun rememberCaptureLauncher(
 
         captureState.clear()
 
-        val result =
-            if (success && file != null && uri != null) {
-                ShadeResult.Captured(file, uri)
-            } else {
+        when {
+            !success -> {
                 file?.delete()
-                null
+                callback.onFailure?.invoke(
+                    ShadeError.CaptureFailed(ShadeError.CaptureFailureReason.ActivityResultFailed)
+                )
             }
-
-        callback.invoke(result, ShadeError.CaptureFailed)
+            file == null -> {
+                callback.onFailure?.invoke(
+                    ShadeError.CaptureFailed(ShadeError.CaptureFailureReason.TempFileNull)
+                )
+            }
+            uri == null -> {
+                file.delete()
+                callback.onFailure?.invoke(
+                    ShadeError.CaptureFailed(ShadeError.CaptureFailureReason.TempUriNull)
+                )
+            }
+            else -> {
+                callback.onResult?.invoke(ShadeResult.Captured(file, uri))
+            }
+        }
     }
 }
 
@@ -147,9 +160,6 @@ internal fun rememberMultiDocumentLauncher(
     callback: ShadeResultHolder,
 ): ActivityResultLauncher<Array<String>>? {
     if (!enabled) return null
-    Log.i("Document", "Multi document launcher registered")
-
-
     return rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->

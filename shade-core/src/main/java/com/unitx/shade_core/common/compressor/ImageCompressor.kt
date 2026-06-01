@@ -62,7 +62,6 @@ internal object ImageCompressor {
             val originalHeight = boundsOptions.outHeight
 
             if (originalWidth <= 0 || originalHeight <= 0) {
-                // ← was: return@withContext null
                 return@withContext Result.failure(
                     IllegalStateException("Invalid image dimensions: ${originalWidth}x${originalHeight} for file ${input.name}")
                 )
@@ -116,11 +115,10 @@ internal object ImageCompressor {
 
             withContext(Dispatchers.Main) { onProgress?.invoke(ProgressConfig.Compressing(100, fileNumber)) }
 
-            Result.success(compressedFile)  // ← was: compressedFile
+            Result.success(compressedFile)
 
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            // ← was: e.printStackTrace(); null
             Result.failure(e)
         }
     }
