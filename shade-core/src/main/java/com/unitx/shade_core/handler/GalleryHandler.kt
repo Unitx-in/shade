@@ -3,6 +3,7 @@ package com.unitx.shade_core.handler
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import com.unitx.shade_core.common.PermissionHelper
@@ -214,6 +215,7 @@ internal class GalleryHandler(
                 }
                 onFailure?.invoke(ShadeError.CompressionFailed(source = source, cause = e.cause))
             } catch (e: CancellationException) {
+                Log.i("ShadeError", "Cancellation exception during gallery")
                 throw e
             } catch (e: Exception) {
                 onFailure?.invoke(ShadeError.Unknown(e))
@@ -251,6 +253,7 @@ internal class GalleryHandler(
                 }
                 onFailure?.invoke(ShadeError.CompressionFailed(source = source, cause = e.cause))
             } catch (e: CancellationException) {
+                Log.i("ShadeError", "Cancellation exception during gallery")
                 throw e
             } catch (e: Exception) {
                 onFailure?.invoke(ShadeError.Unknown(e))

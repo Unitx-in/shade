@@ -93,10 +93,7 @@ internal object ImageCompressor {
 
             val compressedFile = File.createTempFile(
                 "IMG_CMP_",
-                when (outputFormat) {
-                    CompressFormat.JPEG -> ".jpg"
-                    CompressFormat.PNG -> ".png"
-                },
+                outputFormat.extension,
                 context.cacheDir
             )
 

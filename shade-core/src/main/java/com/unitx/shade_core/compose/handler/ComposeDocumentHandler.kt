@@ -7,6 +7,7 @@ import com.unitx.shade_core.compose.state.ShadeResultHolder
 import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.common.result.ShadeResult
 import android.content.Context
+import android.util.Log
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.processor.DocumentProcessor
@@ -53,6 +54,7 @@ internal class ComposeDocumentHandler(
                         ShadeError.FileSaveFailed(uri = e.uri, cause = e.cause)
                     )
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during document processing")
                     throw e
                 } catch (e: Exception) {
                     documentConfig.onFailure?.invoke(
@@ -94,6 +96,7 @@ internal class ComposeDocumentHandler(
                         ShadeError.FileSaveFailed(uris = e.uris, cause = e.cause)
                     )
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during document processing")
                     throw e
                 } catch (e: Exception) {
                     documentConfig.onFailure?.invoke(

@@ -3,6 +3,7 @@ package com.unitx.shade_core.compose.handler
 import android.Manifest
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import com.unitx.shade_core.common.CameraTarget
 import com.unitx.shade_core.common.FileHelper
@@ -76,6 +77,7 @@ internal class ComposeCameraHandler(
                         )
                     )
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during capture")
                     captureState.file?.delete()
                     throw e
                 } catch (e: Exception) {
@@ -129,6 +131,7 @@ internal class ComposeCameraHandler(
                         )
                     )
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during capture")
                     throw e
                 } catch (e: Exception) {
                     cameraConfig.onFailure?.invoke(

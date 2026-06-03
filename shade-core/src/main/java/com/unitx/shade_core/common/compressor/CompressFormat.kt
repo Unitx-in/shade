@@ -14,7 +14,7 @@ package com.unitx.shade_core.common.compressor
  * }
  * ```
  */
-enum class CompressFormat {
+enum class CompressFormat(val extension: String) {
 
     /**
      * JPEG format. Lossy compression — smaller file size, no transparency support.
@@ -22,7 +22,7 @@ enum class CompressFormat {
      * The output quality is controlled by the `quality` parameter (0–100).
      * This is the default format and recommended for photos.
      */
-    JPEG,
+    JPEG(".jpg"),
 
     /**
      * PNG format. Lossless compression — larger file size, supports transparency.
@@ -30,5 +30,5 @@ enum class CompressFormat {
      * The `quality` parameter is ignored for PNG — output is always lossless.
      * Recommended for screenshots, graphics, or images requiring transparency.
      */
-    PNG
+    PNG(".png")
 }

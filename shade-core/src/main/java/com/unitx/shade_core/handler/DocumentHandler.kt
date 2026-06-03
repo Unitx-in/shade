@@ -2,6 +2,7 @@ package com.unitx.shade_core.handler
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.action.ShadeAction
@@ -49,6 +50,7 @@ internal class DocumentHandler(
                 } catch (e: ShadeFileSaveException) {
                     docConfig.onFailure?.invoke(ShadeError.FileSaveFailed(uri = e.uri))
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during document processing")
                     throw e
                 } catch (e: Exception) {
                     docConfig.onFailure?.invoke(
@@ -84,6 +86,7 @@ internal class DocumentHandler(
                 } catch (e: ShadeFileSaveException) {
                     docConfig.onFailure?.invoke(ShadeError.FileSaveFailed(uris = e.uris))
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during document processing")
                     throw e
                 } catch (e: Exception) {
                     docConfig.onFailure?.invoke(

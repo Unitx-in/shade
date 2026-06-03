@@ -2,6 +2,7 @@ package com.unitx.shade_core.compose.handler
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
@@ -71,6 +72,7 @@ internal class ComposeGalleryHandler(
                         )
                     )
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during gallery")
                     throw e
                 } catch (e: Exception) {
                     gallery.onFailure?.invoke(ShadeError.Unknown(e))
@@ -117,6 +119,7 @@ internal class ComposeGalleryHandler(
                         )
                     )
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during gallery")
                     throw e
                 } catch (e: Exception) {
                     gallery.onFailure?.invoke(ShadeError.Unknown(e))
@@ -162,6 +165,7 @@ internal class ComposeGalleryHandler(
                         )
                     )
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during gallery")
                     throw e
                 } catch (e: Exception) {
                     gallery.onFailure?.invoke(ShadeError.Unknown(e))
@@ -207,6 +211,7 @@ internal class ComposeGalleryHandler(
                         )
                     )
                 } catch (e: CancellationException) {
+                    Log.i("ShadeError", "Cancellation exception during gallery")
                     throw e
                 } catch (e: Exception) {
                     gallery.onFailure?.invoke(ShadeError.Unknown(e))
