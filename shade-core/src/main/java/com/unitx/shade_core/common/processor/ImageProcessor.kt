@@ -24,6 +24,7 @@ internal object ImageProcessor {
         extension: String,
         copyToCache: CacheConfig?,
         compression: CompressionConfig?,
+        authority: String,
     ): ShadeResult.ShadeMedia = withContext(Dispatchers.IO) {
 
         val processedFile = if (compression?.enabled == true) {
@@ -44,7 +45,11 @@ internal object ImageProcessor {
         } else null
 
         val finalUri = if (processedFile != null && file == null) {
-            FileHelper.getUriFromFile(context, processedFile)
+            FileHelper.getUriFromFile(
+                context = context,
+                file = processedFile,
+                authority = authority
+            )
         } else {
             uri
         }
@@ -60,6 +65,7 @@ internal object ImageProcessor {
         extension: String,
         copyToCache: CacheConfig?,
         compression: CompressionConfig?,
+        authority: String
     ): List<ShadeResult.ShadeMedia> = withContext(Dispatchers.IO) {
 
         val processedFiles = if (compression?.enabled == true) {
@@ -85,7 +91,11 @@ internal object ImageProcessor {
         return@withContext processedFiles?.mapIndexed { index, processedFile ->
             val originalUri = uris[index]
             val finalUri = if (processedFile != null && files == null) {
-                FileHelper.getUriFromFile(context, processedFile)
+                FileHelper.getUriFromFile(
+                    context = context,
+                    file = processedFile,
+                    authority = authority
+                )
             } else {
                 originalUri
             }
@@ -100,9 +110,11 @@ internal object ImageProcessor {
         uri: Uri,
         prefix: String,
         compression: CompressionConfig,
-    ): File? {
+    ): File {
         // No nested withContext — already running on Dispatchers.IO from process()
-        val sourceFile = File.createTempFile("${prefix}SRC_", ".tmp", context.cacheDir)
+        val sourceFile = withContext(Dispatchers.IO) {
+            File.createTempFile("${prefix}SRC_", ".tmp", FileHelper.shadeCacheDir(context))
+        }
 
         try {
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -138,7 +150,7 @@ internal object ImageProcessor {
     ): List<File?> = withContext(Dispatchers.IO) {
 
         val sourceFiles = uris.map { uri ->
-            val sourceFile = File.createTempFile("${prefix}SRC_", ".tmp", context.cacheDir)
+            val sourceFile = File.createTempFile("${prefix}SRC_", ".tmp", FileHelper.shadeCacheDir(context))
             context.contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(sourceFile).use { input.copyTo(it) }
             } ?: throw ShadeCompressionException(

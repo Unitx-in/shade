@@ -54,23 +54,38 @@ dependencies {
 Add to your `AndroidManifest.xml` inside application block:
 
 ```xml
-<provider
-    android:name="androidx.core.content.FileProvider"
+
+<provider 
     android:authorities="${applicationId}.provider"
-    android:exported="false"
-    android:grantUriPermissions="true">
-    <meta-data
+    android:exported="false" android:grantUriPermissions="true"
+    android:name="androidx.core.content.FileProvider">
+    <meta-data 
         android:name="android.support.FILE_PROVIDER_PATHS"
         android:resource="@xml/shade_file_paths" />
 </provider>
 ```
+
+If your app already has a `FileProvider` with a different authority (e.g. `${applicationId}.fileprovider`), pass it explicitly:
+
+```kotlin
+val shade = rememberShade {
+    setFilesProviderAuthority("com.yourapp.fileprovider")
+    image { ... }
+}
+```
+
+If you already have a `file_paths.xml`, just add the `<cache-path>` entry to it instead of creating a new file, and point your existing provider's `android:resource` to it.
+
+---
 
 Create `res/xml/shade_file_paths.xml`:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <cache-path name="shade_cache" path="." />
+    <cache-path
+        name="shade_cache"
+        path="shade_cache/" />
 </paths>
 ```
 

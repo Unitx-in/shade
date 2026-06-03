@@ -85,6 +85,7 @@ internal class CameraHandler(
                         extension = extension,
                         copyToCache = null,
                         compression = compression,  // Caching is not available in camera
+                        authority = config.getFilesProviderAuthority()
                     )
                 },
                 onFailure = config.image?.camera?.onFailure,
@@ -109,6 +110,7 @@ internal class CameraHandler(
                         extension = extension,
                         compression = compression,
                         copyToCache = null, // Caching is not available in camera
+                        authority = config.getFilesProviderAuthority()
                     )
                 },
                 onFailure = config.video?.camera?.onFailure,
@@ -248,7 +250,7 @@ internal class CameraHandler(
     ) {
         scope.launch {
             val result = runCatching {
-                FileHelper.createTempFile(context, prefix, extension)
+                FileHelper.createTempFile(context, prefix, extension, config.getFilesProviderAuthority())
             }
             val pair = result.getOrNull()
             if (pair == null) {

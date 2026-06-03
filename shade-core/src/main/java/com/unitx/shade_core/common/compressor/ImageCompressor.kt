@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import androidx.core.graphics.scale
 import androidx.exifinterface.media.ExifInterface
+import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.config.extend.ProgressConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -94,7 +95,7 @@ internal object ImageCompressor {
             val compressedFile = File.createTempFile(
                 "IMG_CMP_",
                 outputFormat.extension,
-                context.cacheDir
+                FileHelper.shadeCacheDir(context)
             )
 
             FileOutputStream(compressedFile).use { outputStream ->

@@ -53,8 +53,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                     onResult { captured ->
-                                        val new = captured.toMultipartPart("cameraImage")
-                                        Log.i("MultipartTesting", new.toString())
+                                        Log.i("MultipartTesting", "Image captured: ${captured.file.absolutePath}")
                                         Toast.makeText(context, "Video captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
                                     }
                                     onFailure { error ->

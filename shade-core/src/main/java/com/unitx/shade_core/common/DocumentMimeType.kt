@@ -17,7 +17,7 @@ package com.unitx.shade_core.common
  * shade.launch(ShadeAction.Document(listOf(DocumentMimeType.DOC, DocumentMimeType.DOCX)))
  * ```
  */
-enum class DocumentMimeType(val value: String) {
+enum class DocumentMimeType(val mimeTypeValue: String) {
 
     /** Legacy Word document (.doc) */
     DOC("application/msword"),
@@ -50,7 +50,7 @@ enum class DocumentMimeType(val value: String) {
     RTF("application/rtf");
 
     internal companion object {
-        val ALL_VALUE_TYPED_ARRAY: Array<String> = entries.map { it.value }.toTypedArray()
+        val ALL_VALUE_TYPED_ARRAY: Array<String> = entries.map { it.mimeTypeValue }.toTypedArray()
         val ALL_ENTRY_LIST: List<DocumentMimeType> = entries as List<DocumentMimeType>
     }
 }

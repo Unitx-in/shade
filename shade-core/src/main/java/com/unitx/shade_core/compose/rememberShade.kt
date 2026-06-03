@@ -69,7 +69,12 @@ import com.unitx.shade_core.core.ShadeCore
 fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
 
     val context = LocalContext.current
-    val config = remember { ShadeConfig().apply(block) }
+    val config = remember {
+        ShadeConfig().apply {
+            setFilesProviderAuthority("${context.packageName}.provider")
+            apply(block)
+        }
+    }
     val captureState = remember { CaptureState() }
     val permCallbacks = remember { PermissionCallbackHolder() }
     val scope = rememberCoroutineScope()

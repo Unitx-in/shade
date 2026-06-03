@@ -1,14 +1,12 @@
 package com.unitx.shade_core.handler
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import com.unitx.shade_core.common.DocumentMimeType
 import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.action.ShadeAction
 import com.unitx.shade_core.common.processor.DocumentProcessor
 import com.unitx.shade_core.common.config.ShadeConfig
-import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.core.LauncherRegistry
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeFileSaveException
@@ -41,6 +39,7 @@ internal class DocumentHandler(
                         prefix = "DOC_",
                         extension = FileHelper.extensionFromUri(context, uri),
                         copyToCache = docConfig.copyToCache,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     docConfig.onResult?.invoke(
@@ -79,6 +78,7 @@ internal class DocumentHandler(
                         prefix = "DOC_",
                         extensions = uris.map { FileHelper.extensionFromUri(context, it) },
                         copyToCache = docConfig.copyToCache,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     docConfig.onResult?.invoke(ShadeResult.Multiple(items))
@@ -103,7 +103,7 @@ internal class DocumentHandler(
     fun handleDocument(action: ShadeAction.Document) {
         val docConfig = config.document ?: return
         val mimeTypes = action.mimeTypes
-            .map { it.value }
+            .map { it.mimeTypeValue }
             .takeIf { it.isNotEmpty() }
             ?.toTypedArray()
             ?: DocumentMimeType.ALL_VALUE_TYPED_ARRAY

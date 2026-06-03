@@ -58,7 +58,10 @@ object Shade {
      * Safe to use with `by lazy` at the fragment class level.
      */
     fun with(fragment: Fragment, block: ShadeConfig.() -> Unit): ShadeCore {
-        val config = ShadeConfig().apply(block)
+        val config = ShadeConfig().apply {
+            setFilesProviderAuthority("${fragment.requireContext().packageName}.provider")
+            apply(block)
+        }
         val registrar = FragmentRegistrar(fragment)
         return ShadeCore(registrar, config)
     }
@@ -70,7 +73,10 @@ object Shade {
      * `by lazy` is not safe here.
      */
     fun with(activity: ComponentActivity, block: ShadeConfig.() -> Unit): ShadeCore {
-        val config = ShadeConfig().apply(block)
+        val config = ShadeConfig().apply {
+            setFilesProviderAuthority("${activity.packageName}.provider")
+            apply(block)
+        }
         val registrar = ActivityRegistrar(activity)
         return ShadeCore(registrar, config)
     }

@@ -41,6 +41,7 @@ class ShadeConfig {
     internal var image: ImageScope? = null
     internal var video: VideoScope? = null
     internal var document: DocumentConfig? = null
+    private var fileProviderAuthority: String? = null
 
     /** Configures image camera capture and/or gallery picking. */
     fun image(block: ImageScope.() -> Unit) {
@@ -55,5 +56,13 @@ class ShadeConfig {
     /** Configures document picking. MIME types are specified at launch via [ShadeAction.Document]. */
     fun document(block: DocumentConfig.() -> Unit) {
         document = DocumentConfig().apply(block)
+    }
+
+    internal fun getFilesProviderAuthority(): String {
+        return fileProviderAuthority ?: throw IllegalStateException("Unable to extract file provider authority. Set it manually.")
+    }
+
+    fun setFilesProviderAuthority(authority: String) {
+        fileProviderAuthority = authority
     }
 }

@@ -54,6 +54,7 @@ internal class ComposeGalleryHandler(
                         extension = ".jpg",
                         copyToCache = gallery.copyToCache,
                         compression = gallery.compress,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     gallery.onResult?.invoke(
@@ -100,7 +101,8 @@ internal class ComposeGalleryHandler(
                         prefix = "IMG_",
                         extension = ".jpg",
                         copyToCache = gallery.copyToCache,
-                        compression = gallery.compress
+                        compression = gallery.compress,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     gallery.onResult?.invoke(ShadeResult.Multiple(items))
@@ -146,7 +148,8 @@ internal class ComposeGalleryHandler(
                         prefix = "VID_",
                         extension = ".mp4",
                         copyToCache = gallery.copyToCache,
-                        compression = gallery.compress
+                        compression = gallery.compress,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     gallery.onResult?.invoke(
@@ -192,7 +195,8 @@ internal class ComposeGalleryHandler(
                         prefix = "VID_",
                         extension = ".mp4",
                         copyToCache = gallery.copyToCache,
-                        compression = gallery.compress
+                        compression = gallery.compress,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     gallery.onResult?.invoke(ShadeResult.Multiple(items))

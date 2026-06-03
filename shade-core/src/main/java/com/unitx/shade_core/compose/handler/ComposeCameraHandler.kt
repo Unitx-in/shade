@@ -54,6 +54,7 @@ internal class ComposeCameraHandler(
                         extension = ".jpg",
                         copyToCache = null,
                         compression = cameraConfig.compress,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     cameraConfig.onResult?.invoke(
@@ -110,6 +111,7 @@ internal class ComposeCameraHandler(
                         extension = ".mp4",
                         compression = cameraConfig.compress,
                         copyToCache = null,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     cameraConfig.onResult?.invoke(
@@ -193,7 +195,7 @@ internal class ComposeCameraHandler(
 
     fun launchImageCamera() {
         scope.launch {
-            val result = runCatching { FileHelper.createTempFile(context, "IMG_", ".jpg") }
+            val result = runCatching { FileHelper.createTempFile(context, "IMG_", ".jpg", config.getFilesProviderAuthority()) }
             val pair = result.getOrNull()
             if (pair == null) {
                 config.image?.camera?.onFailure?.invoke(
@@ -210,7 +212,7 @@ internal class ComposeCameraHandler(
 
     fun launchVideoCamera() {
         scope.launch {
-            val result = runCatching { FileHelper.createTempFile(context, "VID_", ".mp4") }
+            val result = runCatching { FileHelper.createTempFile(context, "VID_", ".mp4", config.getFilesProviderAuthority()) }
             val pair = result.getOrNull()
             if (pair == null) {
                 config.video?.camera?.onFailure?.invoke(

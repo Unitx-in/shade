@@ -17,6 +17,7 @@ internal object DocumentProcessor {
         prefix: String,
         extension: String,
         copyToCache: CacheConfig?,
+        authority: String,
     ): ShadeResult.ShadeMedia = withContext(Dispatchers.IO) {
 
         val processedFile = if (copyToCache?.enabled == true) {
@@ -30,7 +31,7 @@ internal object DocumentProcessor {
         } else null
 
         val finalUri = if (processedFile != null) {
-            FileHelper.getUriFromFile(context, processedFile)
+            FileHelper.getUriFromFile(context, processedFile, authority)
         } else {
             uri
         }
@@ -44,6 +45,7 @@ internal object DocumentProcessor {
         prefix: String,
         extensions: List<String>,
         copyToCache: CacheConfig?,
+        authority: String,
     ): List<ShadeResult.ShadeMedia> = withContext(Dispatchers.IO) {
 
         if (copyToCache?.enabled != true) {
@@ -64,7 +66,11 @@ internal object DocumentProcessor {
         // All files are non-null here — throw above guarantees it
         files.mapIndexed { index, file ->
             val savedFile = file!!
-            val finalUri = FileHelper.getUriFromFile(context, savedFile)
+            val finalUri = FileHelper.getUriFromFile(
+                context = context,
+                file = savedFile,
+                authority = authority
+            )
             ShadeResult.ShadeMedia(uri = finalUri, file = savedFile)
         }
     }

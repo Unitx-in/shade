@@ -6,9 +6,12 @@ import com.otaliastudios.transcoder.TranscoderListener
 import com.otaliastudios.transcoder.resize.AtMostResizer
 import com.otaliastudios.transcoder.resize.PassThroughResizer
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy
+import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.config.extend.ProgressConfig
 import kotlinx.coroutines.suspendCancellableCoroutine
+import okio.FileHandle
 import java.io.File
+import java.util.logging.FileHandler
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -48,7 +51,7 @@ internal object VideoCompressor {
         fileNumber: Int = 1,
     ): Result<File> = suspendCancellableCoroutine { continuation ->
 
-        val output = File.createTempFile("VID_CMP_", ".mp4", context.cacheDir)
+        val output = File.createTempFile("VID_CMP_", ".mp4", FileHelper.shadeCacheDir(context))
 
         val future = Transcoder.into(output.absolutePath)
             .addDataSource(input.absolutePath)

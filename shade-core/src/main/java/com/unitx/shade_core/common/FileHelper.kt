@@ -12,31 +12,30 @@ import java.io.File
 
 internal object FileHelper {
 
+    internal fun shadeCacheDir(context: Context): File {
+        return File(context.cacheDir, "shade_cache").also {
+            if (!it.exists()) it.mkdirs()
+        }
+    }
+
     internal fun getUriFromFile(
         context: Context,
-        file: File
+        file: File,
+        authority: String
     ): Uri {
         return try {
             FileProvider.getUriForFile(
                 context,
-                "${context.packageName}.provider",
+                authority,
                 file
             )
-        } catch (e: CancellationException){
+        } catch (e: CancellationException) {
             throw e
         } catch (e: IllegalArgumentException) {
             throw IllegalStateException(
-                "Shade requires a FileProvider with authority \"${context.packageName}.provider\". " +
-                        "Add the following to your AndroidManifest.xml inside <application>:\n\n" +
-                        "<provider\n" +
-                        "    android:name=\"androidx.core.content.FileProvider\"\n" +
-                        $$"    android:authorities=\"${applicationId}.provider\"\n" +
-                        "    android:exported=\"false\"\n" +
-                        "    android:grantUriPermissions=\"true\">\n" +
-                        "    <meta-data\n" +
-                        "        android:name=\"android.support.FILE_PROVIDER_PATHS\"\n" +
-                        "        android:resource=\"@xml/shade_file_paths\" />\n" +
-                        "</provider>",
+                "Shade internal error: FileProvider not configured correctly. " +
+                        "Please report this at https://github.com/Unitx-in/shade/issues. " +
+                        "Details: ${e.message}",
                 e
             )
         }
@@ -45,15 +44,19 @@ internal object FileHelper {
     internal suspend fun createTempFile(
         context: Context,
         prefix: String,
-        ext: String
+        ext: String,
+        authority: String
     ): Pair<File, Uri>? =
         try {
-            val file = withContext(Dispatchers.IO){ File.createTempFile(prefix, ext, context.cacheDir) }
-            val uri = getUriFromFile(context, file)
+            val dir = shadeCacheDir(context)
+            val file = withContext(Dispatchers.IO) {
+                File.createTempFile(prefix, ext, dir)
+            }
+            val uri = getUriFromFile(context, file, authority)
             Pair(file, uri)
         } catch (e: IllegalStateException) {
             throw e
-        }  catch (_: Exception){
+        } catch (_: Exception) {
             null
         }
 
@@ -123,7 +126,7 @@ internal object FileHelper {
         fileNumber: Int = 1,
     ): File? = withContext(Dispatchers.IO) {
         try {
-            val file = File.createTempFile(prefix, extension, context.cacheDir)
+            val file = File.createTempFile(prefix, extension, shadeCacheDir(context))
 
             val totalBytes = context.contentResolver.query(
                 uri, arrayOf(OpenableColumns.SIZE), null, null, null

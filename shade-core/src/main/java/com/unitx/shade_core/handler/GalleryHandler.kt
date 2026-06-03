@@ -78,6 +78,7 @@ internal class GalleryHandler(
                         extension = ext,
                         copyToCache = copyToCache,
                         compression = compression,
+                        authority = config.getFilesProviderAuthority()
                     )
                 },
                 compression = gallery.compress,
@@ -103,7 +104,8 @@ internal class GalleryHandler(
                         prefix = pref,
                         extension = ext,
                         copyToCache = copyToCache,
-                        compression = compression
+                        compression = compression,
+                        authority = config.getFilesProviderAuthority()
                     )
                 },
                 compression = gallery.compress,
@@ -130,6 +132,7 @@ internal class GalleryHandler(
                         extension = ext,
                         copyToCache = copyToCache,
                         compression = compression,
+                        authority = config.getFilesProviderAuthority()
                     )
                 },
                 compression = gallery.compress,
@@ -155,7 +158,8 @@ internal class GalleryHandler(
                         prefix = pref,
                         extension = ext,
                         copyToCache = copyToCache,
-                        compression = compression
+                        compression = compression,
+                        authority = config.getFilesProviderAuthority()
                     )
                 },
                 compression = gallery.compress,

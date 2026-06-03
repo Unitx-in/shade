@@ -43,6 +43,7 @@ internal class ComposeDocumentHandler(
                         prefix = "DOC_",
                         extension = FileHelper.extensionFromUri(context, single.uri),
                         copyToCache = documentConfig.copyToCache,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     documentConfig.onResult?.invoke(
@@ -87,6 +88,7 @@ internal class ComposeDocumentHandler(
                         prefix = "DOC_",
                         extensions = uris.map { FileHelper.extensionFromUri(context, it) },
                         copyToCache = documentConfig.copyToCache,
+                        authority = config.getFilesProviderAuthority()
                     )
 
                     documentConfig.onResult?.invoke(ShadeResult.Multiple(items))
@@ -117,7 +119,7 @@ internal class ComposeDocumentHandler(
     fun handleDocument(action: ShadeAction.Document) {
         val documentConfig = config.document ?: return
         val mimes = action.mimeTypes
-            .map { it.value }
+            .map { it.mimeTypeValue }
             .takeIf { it.isNotEmpty() }
             ?.toTypedArray()
             ?: DocumentMimeType.ALL_VALUE_TYPED_ARRAY

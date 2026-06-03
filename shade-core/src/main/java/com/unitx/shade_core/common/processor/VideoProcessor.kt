@@ -11,6 +11,7 @@ import com.unitx.shade_core.common.result.ShadeFileSaveException
 import com.unitx.shade_core.common.result.ShadeResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okio.FileHandle
 import java.io.File
 import java.io.FileOutputStream
 
@@ -24,6 +25,7 @@ internal object VideoProcessor {
         extension: String,
         copyToCache: CacheConfig?,
         compression: CompressionConfig?,
+        authority: String
     ): List<ShadeResult.ShadeMedia> = withContext(Dispatchers.IO) {
 
         val processedFiles = if (compression?.enabled == true) {
@@ -50,7 +52,11 @@ internal object VideoProcessor {
         return@withContext processedFiles?.mapIndexed { index, processedFile ->
             val originalUri = uris[index]
             val finalUri = if (processedFile != null && files == null) {
-                FileHelper.getUriFromFile(context, processedFile)
+                FileHelper.getUriFromFile(
+                    context = context,
+                    file = processedFile,
+                    authority = authority
+                )
             } else {
                 originalUri
             }
@@ -68,6 +74,7 @@ internal object VideoProcessor {
         extension: String,
         copyToCache: CacheConfig?,
         compression: CompressionConfig?,
+        authority: String
     ): ShadeResult.ShadeMedia = withContext(Dispatchers.IO) {
 
         val processedFile = if (compression?.enabled == true) {
@@ -89,7 +96,11 @@ internal object VideoProcessor {
         } else null
 
         val finalUri = if (processedFile != null && file == null) {
-            FileHelper.getUriFromFile(context, processedFile)
+            FileHelper.getUriFromFile(
+                context = context,
+                file = processedFile,
+                authority = authority
+            )
         } else {
             uri
         }
@@ -103,8 +114,10 @@ internal object VideoProcessor {
         prefix: String,
         extension: String,
         compression: CompressionConfig
-    ): File? {
-        val sourceFile = File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
+    ): File {
+        val sourceFile = withContext(Dispatchers.IO) {
+            File.createTempFile("${prefix}SRC_", extension, FileHelper.shadeCacheDir(context))
+        }
 
         try {
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -144,7 +157,7 @@ internal object VideoProcessor {
     ): List<File?> = withContext(Dispatchers.IO) {
 
         val sourceFiles = uris.map { uri ->
-            val sourceFile = File.createTempFile("${prefix}SRC_", extension, context.cacheDir)
+            val sourceFile = File.createTempFile("${prefix}SRC_", extension, FileHelper.shadeCacheDir(context))
             context.contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(sourceFile).use { input.copyTo(it) }
             } ?: throw ShadeCompressionException(
