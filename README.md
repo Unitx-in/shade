@@ -355,6 +355,29 @@ gallery {
 }
 ```
 
+### Save to External Storage
+
+Saves the captured file directly to a custom external storage path. Works alongside compression — if compression is enabled, the compressed file is saved to external storage and the cache copy is deleted.
+
+```kotlin
+camera {
+    saveToExternalStorage {
+        enabled = true
+        path = File(
+            Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES
+            ), "Shade"
+        )
+    }
+    onResult { result ->
+        Log.d("Shade", result.file?.absolutePath ?: "no file")
+        // file is in external storage, not cache
+    }
+}
+```
+
+> Only available for camera captures. For public directories like `DCIM/` or `Pictures/`, declare `WRITE_EXTERNAL_STORAGE` in your manifest for API 28 and below. On API 29+, no permission is needed for app-specific paths via `getExternalFilesDir()`.
+
 ### Compression
 
 #### Image
