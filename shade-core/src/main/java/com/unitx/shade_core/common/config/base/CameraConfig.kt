@@ -74,6 +74,15 @@ class CameraConfig {
         onFailure = block
     }
 
+    /**
+     * Configures external storage saving for camera captures.
+     *
+     * When enabled, the final file is written to the specified path and
+     * the cache copy is deleted. If compression is also enabled, the
+     * compressed output is saved to external storage.
+     *
+     * @see SaveToExternalStorageConfig
+     */
     fun saveToExternalStorage(block: SaveToExternalStorageConfig.() -> Unit) {
         saveToExternalStorage = SaveToExternalStorageConfig().apply(block)
     }

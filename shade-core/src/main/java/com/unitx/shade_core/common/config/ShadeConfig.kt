@@ -62,6 +62,12 @@ class ShadeConfig {
         return fileProviderAuthority ?: throw IllegalStateException("Unable to extract file provider authority. Set it manually.")
     }
 
+    /**
+     * Overrides the FileProvider authority used to generate content URIs.
+     *
+     * Only needed if your app declares a FileProvider with a non-standard authority.
+     * Shade sets this automatically using `${packageName}.provider` by default.
+     */
     fun setFilesProviderAuthority(authority: String) {
         fileProviderAuthority = authority
     }

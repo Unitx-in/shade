@@ -23,6 +23,7 @@ Supports both **Compose** and **XML (Activity/Fragment)** setups.
 | No boilerplate launcher registration       | ✅     |
 | Type-safe DSL configuration                | ✅     |
 | Upload-ready OkHttp output                 | ✅     |
+| Save files to extenal storage              | ✅     |
 
 ## 📦 Installation
 
@@ -220,10 +221,10 @@ Convert any `ShadeResult` directly into an OkHttp `RequestBody` or `MultipartBod
 
 ### File requirement
 
-| Result type | File available? |
-|---|---|
-| `ShadeResult.Captured` | ✅ Always (camera always writes a file) |
-| `ShadeResult.Single` | ✅ When `copyToCache` or `compress` is enabled |
+| Result type                  | File available?                               |
+|------------------------------|-----------------------------------------------|
+| `ShadeResult.Captured`       | ✅ Always (camera always writes a file)        |
+| `ShadeResult.Single`         | ✅ When `copyToCache` or `compress` is enabled |
 | `ShadeResult.Multiple` items | ✅ When `copyToCache` or `compress` is enabled |
 
 ### Camera capture
