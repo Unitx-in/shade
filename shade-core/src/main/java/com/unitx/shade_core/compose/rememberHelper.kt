@@ -47,8 +47,6 @@ internal fun rememberCaptureLauncher(
         val file = captureState.file
         val uri = captureState.uri
 
-        captureState.clear()
-
         when {
             !success -> {
                 file?.delete()
@@ -71,6 +69,8 @@ internal fun rememberCaptureLauncher(
                 callback.onResult?.invoke(ShadeResult.Captured(file, uri))
             }
         }
+
+        captureState.clear()
     }
 }
 

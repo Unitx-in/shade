@@ -44,14 +44,12 @@ internal object ImageProcessor {
             ) ?: throw ShadeFileSaveException(uri = uri)
         } else null
 
-        val finalUri = if (processedFile != null && file == null) {
-            FileHelper.getUriFromFile(
-                context = context,
-                file = processedFile,
-                authority = authority
-            )
-        } else {
-            uri
+        val finalUri = when {
+            compression?.enabled == true && processedFile != null ->
+                FileHelper.getUriFromFile(context = context, file = processedFile, authority = authority)
+            file == null && processedFile != null ->
+                FileHelper.getUriFromFile(context = context, file = processedFile, authority = authority)
+            else -> uri
         }
 
         return@withContext ShadeResult.ShadeMedia(uri = finalUri, file = processedFile)
@@ -90,14 +88,12 @@ internal object ImageProcessor {
 
         return@withContext processedFiles?.mapIndexed { index, processedFile ->
             val originalUri = uris[index]
-            val finalUri = if (processedFile != null && files == null) {
-                FileHelper.getUriFromFile(
-                    context = context,
-                    file = processedFile,
-                    authority = authority
-                )
-            } else {
-                originalUri
+            val finalUri = when {
+                compression?.enabled == true && processedFile != null ->
+                    FileHelper.getUriFromFile(context = context, file = processedFile, authority = authority)
+                files == null && processedFile != null ->
+                    FileHelper.getUriFromFile(context = context, file = processedFile, authority = authority)
+                else -> originalUri
             }
             ShadeResult.ShadeMedia(uri = finalUri, file = processedFile)
         } ?: uris.map { uri ->

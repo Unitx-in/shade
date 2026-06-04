@@ -53,8 +53,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                     onResult { captured ->
-                                        Log.i("MultipartTesting", "Image captured: ${captured.file.absolutePath}")
-                                        Toast.makeText(context, "Video captured: ${captured.file.absolutePath}", Toast.LENGTH_SHORT).show()
+                                        Log.i("CameraResultError", "Image captured: ${captured.file.absolutePath} ///// ${captured.uri}")
                                     }
                                     onFailure { error ->
                                         Log.i("CameraResultError", error.toString())

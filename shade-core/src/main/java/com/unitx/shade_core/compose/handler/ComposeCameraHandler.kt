@@ -43,13 +43,14 @@ internal class ComposeCameraHandler(
 
             val captured = result as ShadeResult.Captured
             val cameraConfig = config.image?.camera ?: return@onResult
+            val snapshotFile = captureState.file
 
             scope.launch {
                 try {
                     val processed = ImageProcessor.process(
                         context = context,
                         uri = captured.uri,
-                        file = captureState.file,
+                        file = snapshotFile,
                         prefix = "IMG_",
                         extension = ".jpg",
                         copyToCache = null,
@@ -59,12 +60,13 @@ internal class ComposeCameraHandler(
 
                     cameraConfig.onResult?.invoke(
                         ShadeResult.Captured(
-                            file = processed.file ?: captureState.file!!,
+                            file = processed.file ?: snapshotFile!!,
                             uri = processed.uri
                         )
                     )
 
-                } catch (e: ShadeFileSaveException) {
+                }
+                catch (e: ShadeFileSaveException) {
                     captureState.file?.delete()
                     cameraConfig.onFailure?.invoke(
                         ShadeError.FileSaveFailed(uri = e.uri, cause = e.cause)
@@ -100,13 +102,15 @@ internal class ComposeCameraHandler(
 
             val captured = result as ShadeResult.Captured
             val cameraConfig = config.video?.camera ?: return@onResult
+            val snapshotFile = captureState.file
+
 
             scope.launch {
                 try {
                     val processed = VideoProcessor.process(
                         context = context,
                         uri = captured.uri,
-                        file = captureState.file,
+                        file = snapshotFile,
                         prefix = "VID_",
                         extension = ".mp4",
                         compression = cameraConfig.compress,
@@ -116,7 +120,7 @@ internal class ComposeCameraHandler(
 
                     cameraConfig.onResult?.invoke(
                         ShadeResult.Captured(
-                            file = processed.file ?: captureState.file!!,
+                            file = processed.file ?: snapshotFile!!,
                             uri = processed.uri
                         )
                     )
