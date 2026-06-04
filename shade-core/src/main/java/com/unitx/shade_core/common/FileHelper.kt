@@ -3,6 +3,7 @@ package com.unitx.shade_core.common
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.core.content.FileProvider
 import com.unitx.shade_core.common.config.extend.ProgressConfig
 import kotlinx.coroutines.CancellationException
@@ -15,6 +16,18 @@ internal object FileHelper {
     internal fun shadeCacheDir(context: Context): File {
         return File(context.cacheDir, "shade_cache").also {
             if (!it.exists()) it.mkdirs()
+        }
+    }
+
+    internal fun saveToExternalStorage(file: File, targetDir: File): File? {
+        return try {
+            if (!targetDir.exists()) targetDir.mkdirs()
+            val destination = File(targetDir, file.name)
+            file.copyTo(destination, overwrite = true)
+            file.delete()
+            destination
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -56,7 +69,8 @@ internal object FileHelper {
             Pair(file, uri)
         } catch (e: IllegalStateException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e("Shade", "createTempFile failed: ${e::class.simpleName} — ${e.message}", e)  // ← ADD
             null
         }
 

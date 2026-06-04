@@ -43,6 +43,10 @@ internal class CameraHandler(
     private var tempCaptureFile: File? = null
     private var tempCaptureUri: Uri? = null
 
+    private val prefs by lazy {
+        context.applicationContext.getSharedPreferences("shade_temp", Context.MODE_PRIVATE)
+    }
+
     init {
         registry.onCameraPermissionResult = result@{ granted ->
             if (!granted) {
@@ -83,9 +87,10 @@ internal class CameraHandler(
                         file = file,
                         prefix = prefix,
                         extension = extension,
-                        copyToCache = null,
-                        compression = compression,  // Caching is not available in camera
-                        authority = config.getFilesProviderAuthority()
+                        copyToCache = null, // Caching is not available in camera
+                        compression = compression,
+                        authority = config.getFilesProviderAuthority(),
+                        saveToExternalStorage = config.image?.camera?.saveToExternalStorage
                     )
                 },
                 onFailure = config.image?.camera?.onFailure,
@@ -110,7 +115,8 @@ internal class CameraHandler(
                         extension = extension,
                         compression = compression,
                         copyToCache = null, // Caching is not available in camera
-                        authority = config.getFilesProviderAuthority()
+                        authority = config.getFilesProviderAuthority(),
+                        saveToExternalStorage = config.image?.camera?.saveToExternalStorage
                     )
                 },
                 onFailure = config.video?.camera?.onFailure,
@@ -134,6 +140,7 @@ internal class CameraHandler(
         onFailure: ((ShadeError) -> Unit)?,
         onResult: ((ShadeResult.Captured) -> Unit)?
     ) {
+        restoreTempState()
         val file = tempCaptureFile
         val uri = tempCaptureUri
 
@@ -260,12 +267,31 @@ internal class CameraHandler(
             val (file, uri) = pair
             tempCaptureFile = file
             tempCaptureUri = uri
+            saveTempState(file, uri)
             launcher.launch(uri)
+        }
+    }
+
+    private fun saveTempState(file: File, uri: Uri) {
+        prefs.edit()
+            .putString("temp_file", file.absolutePath)
+            .putString("temp_uri", uri.toString())
+            .apply()
+    }
+
+    private fun restoreTempState() {
+        if (tempCaptureFile != null && tempCaptureUri != null) return
+        val path = prefs.getString("temp_file", null)
+        val uriStr = prefs.getString("temp_uri", null)
+        if (path != null && uriStr != null) {
+            tempCaptureFile = File(path)
+            tempCaptureUri = Uri.parse(uriStr)
         }
     }
 
     private fun clearTempState() {
         tempCaptureFile = null
         tempCaptureUri = null
+        prefs.edit().clear().apply()
     }
 }

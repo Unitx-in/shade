@@ -6,6 +6,7 @@ import com.unitx.shade_core.common.FileHelper
 import com.unitx.shade_core.common.compressor.VideoCompressor
 import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.extend.CompressionConfig
+import com.unitx.shade_core.common.config.extend.SaveToExternalStorageConfig
 import com.unitx.shade_core.common.result.ShadeCompressionException
 import com.unitx.shade_core.common.result.ShadeFileSaveException
 import com.unitx.shade_core.common.result.ShadeResult
@@ -72,6 +73,7 @@ internal object VideoProcessor {
         extension: String,
         copyToCache: CacheConfig?,
         compression: CompressionConfig?,
+        saveToExternalStorage: SaveToExternalStorageConfig? = null,
         authority: String
     ): ShadeResult.ShadeMedia = withContext(Dispatchers.IO) {
 
@@ -93,7 +95,14 @@ internal object VideoProcessor {
             ) ?: throw ShadeFileSaveException(uri = uri)
         } else null
 
+        val externalFile = if (saveToExternalStorage?.enabled == true && processedFile != null && saveToExternalStorage.path != null) {
+            FileHelper.saveToExternalStorage(processedFile, saveToExternalStorage.path!!)
+        } else null
+
+        val finalFile = externalFile ?: processedFile
+
         val finalUri = when {
+            externalFile != null -> Uri.fromFile(externalFile)
             compression?.enabled == true && processedFile != null ->
                 FileHelper.getUriFromFile(context = context, file = processedFile, authority = authority)
             file == null && processedFile != null ->
@@ -101,7 +110,7 @@ internal object VideoProcessor {
             else -> uri
         }
 
-        return@withContext ShadeResult.ShadeMedia(uri = finalUri, file = processedFile)
+        return@withContext ShadeResult.ShadeMedia(uri = finalUri, file = finalFile)
     }
 
     private suspend fun compressFromUri(

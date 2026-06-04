@@ -1,6 +1,7 @@
 package com.unitx.shade
 
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -22,6 +23,7 @@ import com.unitx.shade_core.common.config.extend.ProgressConfig
 import com.unitx.shade_core.common.result.ShadeResult
 import com.unitx.shade_core.common.okHttp.toMultipartPart
 import com.unitx.shade_core.compose.rememberShade
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,17 +43,27 @@ class MainActivity : ComponentActivity() {
                         val shade = rememberShade {
                             image {
                                 camera {
-                                    compress {
+
+                                    saveToExternalStorage {
                                         enabled = true
-                                        videoBitrate = 2_000_000
-                                        frameRate = 30
-                                        maxWidth = 720
-                                        keyFrameInterval = 2
-                                        onProgress = { progressConfig ->
-                                            progressConfig as ProgressConfig.Compressing
-                                            Log.i("Compressing", "progress: ${progressConfig.percent}, file number ${progressConfig.fileNumber}")
-                                        }
+                                        path = File(
+                                            Environment.getExternalStoragePublicDirectory(
+                                                Environment.DIRECTORY_PICTURES
+                                            ), "Shade"
+                                        )
                                     }
+
+//                                    compress {
+//                                        enabled = true
+//                                        videoBitrate = 2_000_000
+//                                        frameRate = 30
+//                                        maxWidth = 720
+//                                        keyFrameInterval = 2
+//                                        onProgress = { progressConfig ->
+//                                            progressConfig as ProgressConfig.Compressing
+//                                            Log.i("Compressing", "progress: ${progressConfig.percent}, file number ${progressConfig.fileNumber}")
+//                                        }
+//                                    }
                                     onResult { captured ->
                                         Log.i("CameraResultError", "Image captured: ${captured.file.absolutePath} ///// ${captured.uri}")
                                     }

@@ -55,7 +55,8 @@ internal class ComposeCameraHandler(
                         extension = ".jpg",
                         copyToCache = null,
                         compression = cameraConfig.compress,
-                        authority = config.getFilesProviderAuthority()
+                        authority = config.getFilesProviderAuthority(),
+                        saveToExternalStorage = cameraConfig.saveToExternalStorage
                     )
 
                     cameraConfig.onResult?.invoke(
@@ -115,7 +116,8 @@ internal class ComposeCameraHandler(
                         extension = ".mp4",
                         compression = cameraConfig.compress,
                         copyToCache = null,
-                        authority = config.getFilesProviderAuthority()
+                        authority = config.getFilesProviderAuthority(),
+                        saveToExternalStorage = cameraConfig.saveToExternalStorage
                     )
 
                     cameraConfig.onResult?.invoke(

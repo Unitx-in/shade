@@ -1,0 +1,1 @@
+Camera captures now work reliably — previously a race condition between state cleanup and result delivery caused every capture to crash before the image could be processed or returned to the app.

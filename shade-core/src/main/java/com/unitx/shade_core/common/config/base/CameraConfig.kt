@@ -2,6 +2,7 @@ package com.unitx.shade_core.common.config.base
 
 import com.unitx.shade_core.common.config.extend.CompressionConfig
 import com.unitx.shade_core.common.config.extend.ProgressConfig
+import com.unitx.shade_core.common.config.extend.SaveToExternalStorageConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
 
@@ -36,6 +37,8 @@ class CameraConfig {
     internal var onResult: ((ShadeResult.Captured) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
     internal var compress: CompressionConfig? = null
+    internal var saveToExternalStorage: SaveToExternalStorageConfig? = null
+
 
     /**
      * Configures image/video compression for camera captures.
@@ -69,5 +72,9 @@ class CameraConfig {
      */
     fun onFailure(block: (ShadeError) -> Unit) {
         onFailure = block
+    }
+
+    fun saveToExternalStorage(block: SaveToExternalStorageConfig.() -> Unit) {
+        saveToExternalStorage = SaveToExternalStorageConfig().apply(block)
     }
 }

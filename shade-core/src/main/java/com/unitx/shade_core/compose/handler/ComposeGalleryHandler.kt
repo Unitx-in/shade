@@ -54,7 +54,7 @@ internal class ComposeGalleryHandler(
                         extension = ".jpg",
                         copyToCache = gallery.copyToCache,
                         compression = gallery.compress,
-                        authority = config.getFilesProviderAuthority()
+                        authority = config.getFilesProviderAuthority(),
                     )
 
                     gallery.onResult?.invoke(
