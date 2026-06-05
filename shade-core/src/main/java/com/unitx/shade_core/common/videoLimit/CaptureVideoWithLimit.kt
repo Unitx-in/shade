@@ -6,16 +6,17 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.activity.result.contract.ActivityResultContract
+import com.unitx.shade_core.common.config.extend.VideoCameraConfig
 
-internal class CaptureVideoWithLimit(private val durationLimit: Int?) :
+internal class CaptureVideoWithLimit(private val videoCameraConfig: VideoCameraConfig?) :
     ActivityResultContract<Uri, Boolean>() {
 
     override fun createIntent(context: Context, input: Uri): Intent {
         return Intent(MediaStore.ACTION_VIDEO_CAPTURE).apply {
             putExtra(MediaStore.EXTRA_OUTPUT, input)
-            durationLimit?.let {
-                putExtra(MediaStore.EXTRA_DURATION_LIMIT, it)
-            }
+            videoCameraConfig?.durationLimit?.let { putExtra(MediaStore.EXTRA_DURATION_LIMIT, it) }
+            videoCameraConfig?.videoQuality?.let { putExtra(MediaStore.EXTRA_VIDEO_QUALITY, it) }
+            videoCameraConfig?.sizeLimit?.let { putExtra(MediaStore.EXTRA_SIZE_LIMIT, it) }
         }
     }
 

@@ -75,7 +75,7 @@ internal class LauncherRegistry(
     // ── Video camera ──────────────────────────────────────────────────────────
 
     val videoCameraLauncher by lazy {
-        registrar.register(CaptureVideoWithLimit(config.video?.camera?.durationLimit)) { success ->
+        registrar.register(CaptureVideoWithLimit(config.video?.camera)) { success ->
             onVideoCameraResult?.invoke(success)
         }
     }

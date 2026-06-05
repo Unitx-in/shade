@@ -132,7 +132,7 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val videoCameraLauncher =
         rememberCaptureLauncher(
             enabled = config.video?.camera != null,
-            contract = CaptureVideoWithLimit(config.video?.camera?.durationLimit),
+            contract = CaptureVideoWithLimit(config.video?.camera),
             captureState = captureState,
             callback = videoCameraCallback
         )
