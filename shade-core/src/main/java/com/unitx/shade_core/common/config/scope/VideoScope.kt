@@ -2,6 +2,7 @@ package com.unitx.shade_core.common.config.scope
 
 import com.unitx.shade_core.common.config.base.CameraConfig
 import com.unitx.shade_core.common.config.base.GalleryConfig
+import com.unitx.shade_core.common.config.extend.VideoCameraConfig
 
 /**
  * DSL scope for video configuration. Use inside `rememberShade { }` or `Shade.with(this) { }`.
@@ -25,12 +26,13 @@ import com.unitx.shade_core.common.config.base.GalleryConfig
  * Only configure the blocks you need — unused blocks are simply not registered.
  */
 class VideoScope {
-    internal var camera: CameraConfig? = null
+    internal var camera: VideoCameraConfig? = null
     internal var gallery: GalleryConfig? = null
 
+
     /** Configures video capture via the device camera. */
-    fun camera(block: CameraConfig.() -> Unit) {
-        camera = CameraConfig().apply(block)
+    fun camera(block: VideoCameraConfig.() -> Unit) {
+        camera = VideoCameraConfig().apply(block)
     }
 
     /** Configures video selection from the system video picker. */

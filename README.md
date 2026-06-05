@@ -16,6 +16,7 @@ Supports both **Compose** and **XML (Activity/Fragment)** setups.
 | Built-in image compression                 | ✅     |
 | Built-in video compression                 | ✅     |
 | Copy to cache with stable `File` reference | ✅     |
+| Save file to external storage              | ✅     |
 | Per-file progress reporting                | ✅     |
 | Automatic permission handling              | ✅     |
 | Compose support                            | ✅     |
