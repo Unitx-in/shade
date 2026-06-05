@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import com.unitx.shade_core.common.config.ShadeConfig
+import com.unitx.shade_core.common.videoLimit.CaptureVideoWithLimit
 import com.unitx.shade_core.registrar.ShadeRegistrar
 
 /**
@@ -74,7 +75,7 @@ internal class LauncherRegistry(
     // ── Video camera ──────────────────────────────────────────────────────────
 
     val videoCameraLauncher by lazy {
-        registrar.register(ActivityResultContracts.CaptureVideo()) { success ->
+        registrar.register(CaptureVideoWithLimit(config.video?.camera?.durationLimit)) { success ->
             onVideoCameraResult?.invoke(success)
         }
     }

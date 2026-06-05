@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import com.unitx.shade_core.common.CameraTarget
 import com.unitx.shade_core.common.FileHelper
@@ -21,7 +20,7 @@ import com.unitx.shade_core.common.processor.VideoProcessor
 import com.unitx.shade_core.common.config.extend.CompressionConfig
 import com.unitx.shade_core.common.result.ShadeCompressionException
 import com.unitx.shade_core.common.result.ShadeFileSaveException
-import kotlinx.coroutines.async
+import com.unitx.shade_core.persistence.CameraStatePersistence
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -36,16 +35,10 @@ internal class CameraHandler(
     private val context: Context,
     private val config: ShadeConfig,
     private val registry: LauncherRegistry,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val cameraStatePersistence: CameraStatePersistence,
 ) {
-
     private var pendingTarget: CameraTarget = CameraTarget.IMAGE
-    private var tempCaptureFile: File? = null
-    private var tempCaptureUri: Uri? = null
-
-    private val prefs by lazy {
-        context.applicationContext.getSharedPreferences("shade_temp", Context.MODE_PRIVATE)
-    }
 
     init {
         registry.onCameraPermissionResult = result@{ granted ->
@@ -65,8 +58,6 @@ internal class CameraHandler(
                 pendingTarget = CameraTarget.IMAGE
                 return@result
             }
-
-
 
             executeCamera(pendingTarget)
             pendingTarget = CameraTarget.IMAGE
@@ -140,11 +131,10 @@ internal class CameraHandler(
         onFailure: ((ShadeError) -> Unit)?,
         onResult: ((ShadeResult.Captured) -> Unit)?
     ) {
-        restoreTempState()
-        val file = tempCaptureFile
-        val uri = tempCaptureUri
-
-        clearTempState()
+        cameraStatePersistence.restore()
+        val file = cameraStatePersistence.file
+        val uri = cameraStatePersistence.uri
+        cameraStatePersistence.clear()
 
         if (!success) {
             file?.delete()
@@ -265,33 +255,8 @@ internal class CameraHandler(
                 return@launch
             }
             val (file, uri) = pair
-            tempCaptureFile = file
-            tempCaptureUri = uri
-            saveTempState(file, uri)
+            cameraStatePersistence.save(file, uri)
             launcher.launch(uri)
         }
-    }
-
-    private fun saveTempState(file: File, uri: Uri) {
-        prefs.edit()
-            .putString("temp_file", file.absolutePath)
-            .putString("temp_uri", uri.toString())
-            .apply()
-    }
-
-    private fun restoreTempState() {
-        if (tempCaptureFile != null && tempCaptureUri != null) return
-        val path = prefs.getString("temp_file", null)
-        val uriStr = prefs.getString("temp_uri", null)
-        if (path != null && uriStr != null) {
-            tempCaptureFile = File(path)
-            tempCaptureUri = Uri.parse(uriStr)
-        }
-    }
-
-    private fun clearTempState() {
-        tempCaptureFile = null
-        tempCaptureUri = null
-        prefs.edit().clear().apply()
     }
 }

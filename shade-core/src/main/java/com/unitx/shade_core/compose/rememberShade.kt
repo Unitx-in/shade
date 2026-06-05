@@ -14,6 +14,7 @@ import com.unitx.shade_core.compose.state.CaptureState
 import com.unitx.shade_core.compose.state.PermissionCallbackHolder
 import com.unitx.shade_core.compose.state.ShadeResultHolder
 import com.unitx.shade_core.common.config.ShadeConfig
+import com.unitx.shade_core.common.videoLimit.CaptureVideoWithLimit
 import com.unitx.shade_core.core.ShadeCore
 
 /**
@@ -131,7 +132,7 @@ fun rememberShade(block: ShadeConfig.() -> Unit): ShadeCore {
     val videoCameraLauncher =
         rememberCaptureLauncher(
             enabled = config.video?.camera != null,
-            contract = ActivityResultContracts.CaptureVideo(),
+            contract = CaptureVideoWithLimit(config.video?.camera?.durationLimit),
             captureState = captureState,
             callback = videoCameraCallback
         )

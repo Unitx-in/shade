@@ -33,7 +33,7 @@ import com.unitx.shade_core.common.result.ShadeResult
  * @see ShadeResult.Captured
  * @see ShadeError
  */
-class CameraConfig {
+open class CameraConfig {
     internal var onResult: ((ShadeResult.Captured) -> Unit)? = null
     internal var onFailure: ((ShadeError) -> Unit)? = null
     internal var compress: CompressionConfig? = null

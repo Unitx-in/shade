@@ -41,9 +41,9 @@ class MainActivity : ComponentActivity() {
                         val context = LocalContext.current
 
                         val shade = rememberShade {
-                            image {
+                            video {
                                 camera {
-
+                                    durationLimit = 5
                                     saveToExternalStorage {
                                         enabled = true
                                         path = File(
@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
 
                         LaunchedEffect(Unit) {
 //                            shade.launch(ShadeAction.Document(listOf(DocumentMimeType.PDF)))
-                            shade.launch(ShadeAction.Image.Camera)
+                            shade.launch(ShadeAction.Video.Camera)
                         }
                     }
                 }

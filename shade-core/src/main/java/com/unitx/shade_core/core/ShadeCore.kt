@@ -5,6 +5,7 @@ import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.handler.CameraHandler
 import com.unitx.shade_core.handler.DocumentHandler
 import com.unitx.shade_core.handler.GalleryHandler
+import com.unitx.shade_core.persistence.CameraStatePersistence
 import com.unitx.shade_core.registrar.ShadeRegistrar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +45,8 @@ open class ShadeCore internal constructor(
 
     private fun implementHandlers() {
         val context = registrar.context
-        cameraHandler = CameraHandler(context, config, registry, scope)
+        val cameraStatePersistence = CameraStatePersistence(context)
+        cameraHandler = CameraHandler(context, config, registry, scope, cameraStatePersistence)
         galleryHandler = GalleryHandler(context, config, registry, scope)
         documentHandler = DocumentHandler(context, config, registry, scope)
     }
