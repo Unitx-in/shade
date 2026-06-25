@@ -27,7 +27,9 @@ internal object ImageCompressor {
         maxWidth: Int?,
         maxHeight: Int?,
         onProgress: ((ProgressConfig.Compressing) -> Unit)?,
-        outputFormat: CompressFormat = CompressFormat.JPEG
+        outputFormat: CompressFormat = CompressFormat.JPEG,
+        maxFileSizeKb: Double? = null,
+        minQuality: Int = 1
     ): List<Result<File>> {
         return inputs.mapIndexed { index, file ->
             compress(
@@ -38,7 +40,9 @@ internal object ImageCompressor {
                 maxHeight = maxHeight,
                 onProgress = onProgress,
                 fileNumber = index + 1,
-                outputFormat = outputFormat
+                outputFormat = outputFormat,
+                maxFileSizeKb = maxFileSizeKb,
+                minQuality = minQuality
             )
         }
     }
@@ -51,7 +55,9 @@ internal object ImageCompressor {
         maxHeight: Int?,
         onProgress: ((ProgressConfig.Compressing) -> Unit)?,
         fileNumber: Int = 1,
-        outputFormat: CompressFormat = CompressFormat.JPEG
+        outputFormat: CompressFormat = CompressFormat.JPEG,
+        maxFileSizeKb: Double? = null,
+        minQuality: Int = 1
     ): Result<File> = withContext(Dispatchers.IO) {
 
         try {
@@ -98,14 +104,26 @@ internal object ImageCompressor {
                 FileHelper.shadeCacheDir(context)
             )
 
-            FileOutputStream(compressedFile).use { outputStream ->
-                val format = when (outputFormat) {
-                    CompressFormat.JPEG -> Bitmap.CompressFormat.JPEG
-                    CompressFormat.PNG -> Bitmap.CompressFormat.PNG
+            val bitmapFormat = when (outputFormat) {
+                CompressFormat.JPEG -> Bitmap.CompressFormat.JPEG
+                CompressFormat.PNG -> Bitmap.CompressFormat.PNG
+            }
+
+            if (maxFileSizeKb != null && outputFormat == CompressFormat.JPEG) {
+                SizeAwareCompressor.compress(
+                    bitmap = finalBitmap,
+                    outFile = compressedFile,
+                    format = bitmapFormat,
+                    startQuality = quality.coerceIn(0, 100),
+                    minQuality = minQuality.coerceIn(1, quality),
+                    maxFileSizeKb = maxFileSizeKb
+                )
+            } else {
+                FileOutputStream(compressedFile).use { outputStream ->
+                    val effectiveQuality =
+                        if (outputFormat == CompressFormat.JPEG) quality.coerceIn(0, 100) else 100
+                    finalBitmap.compress(bitmapFormat, effectiveQuality, outputStream)
                 }
-                val effectiveQuality =
-                    if (outputFormat == CompressFormat.JPEG) quality.coerceIn(0, 100) else 100
-                finalBitmap.compress(format, effectiveQuality, outputStream)
             }
 
             finalBitmap.recycle()

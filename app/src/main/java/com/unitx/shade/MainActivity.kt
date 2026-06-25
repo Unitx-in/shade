@@ -3,6 +3,7 @@ package com.unitx.shade
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,31 +42,38 @@ class MainActivity : ComponentActivity() {
                         val context = LocalContext.current
 
                         val shade = rememberShade {
-                            video {
+                            image {
                                 camera {
-                                    durationLimit = 5
-                                    saveToExternalStorage {
-                                        enabled = true
-                                        path = File(
-                                            Environment.getExternalStoragePublicDirectory(
-                                                Environment.DIRECTORY_PICTURES
-                                            ), "Shade"
-                                        )
-                                    }
-
-//                                    compress {
+//                                    durationLimit = 5
+//                                    saveToExternalStorage {
 //                                        enabled = true
-//                                        videoBitrate = 2_000_000
-//                                        frameRate = 30
-//                                        maxWidth = 720
-//                                        keyFrameInterval = 2
-//                                        onProgress = { progressConfig ->
-//                                            progressConfig as ProgressConfig.Compressing
-//                                            Log.i("Compressing", "progress: ${progressConfig.percent}, file number ${progressConfig.fileNumber}")
-//                                        }
+//                                        path = File(
+//                                            Environment.getExternalStoragePublicDirectory(
+//                                                Environment.DIRECTORY_PICTURES
+//                                            ), "Shade"
+//                                        )
 //                                    }
+
+                                    compress {
+                                        enabled = true
+                                        videoBitrate = 2_000_000
+                                        frameRate = 30
+                                        maxWidth = 720
+                                        keyFrameInterval = 2
+                                        onProgress = { progressConfig ->
+                                            progressConfig as ProgressConfig.Compressing
+                                            Log.i("Compressing", "progress: ${progressConfig.percent}, file number ${progressConfig.fileNumber}")
+                                        }
+                                    }
                                     onResult { captured ->
-                                        Log.i("CameraResultError", "Image captured: ${captured.file.absolutePath} ///// ${captured.uri}")
+                                        val fileName = captured.file.name
+                                        val ext = if (fileName.contains(".")) fileName.substringAfterLast('.').lowercase() else "no extension"
+                                        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+
+                                        Log.d("SHADE_DEBUG", "File path: ${captured.file.absolutePath}")
+                                        Log.d("SHADE_DEBUG", "File name: $fileName")
+                                        Log.d("SHADE_DEBUG", "ext=$ext | mime=$mime")
+                                        Log.d("SHADE_DEBUG", "File size: ${captured.file.length()}")
                                     }
                                     onFailure { error ->
                                         Log.i("CameraResultError", error.toString())
@@ -112,7 +120,7 @@ class MainActivity : ComponentActivity() {
 
                         LaunchedEffect(Unit) {
 //                            shade.launch(ShadeAction.Document(listOf(DocumentMimeType.PDF)))
-                            shade.launch(ShadeAction.Video.Camera)
+                            shade.launch(ShadeAction.Image.Camera)
                         }
                     }
                 }

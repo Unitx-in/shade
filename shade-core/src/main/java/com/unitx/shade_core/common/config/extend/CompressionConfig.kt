@@ -55,5 +55,20 @@ class CompressionConfig {
      */
     var onProgress: ((ProgressConfig) -> Unit)? = null
 
-    var maxFileSize: Double = 10.0
+    /**
+     * Target max output size in **KB**. `null` = disabled (default).
+     *
+     * **Images:** binary-searches quality from [quality] down to [minQuality],
+     * then scales resolution by 0.75x steps if still too large.
+     *
+     * **Videos:** derives bitrate as `(maxFileSizeKb × 8 × 1024) / duration`,
+     * overriding [videoBitrate]. Single-pass; result may vary ±10–15%.
+     */
+    var maxFileSizeKb: Double? = null
+
+    /**
+     * Lower quality bound for image size targeting. Default: `1`.
+     * Ignored if [maxFileSizeKb] is `null`. Has no effect on video.
+     */
+    var minQuality: Int = 1
 }

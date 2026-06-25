@@ -143,7 +143,8 @@ internal object VideoProcessor {
                     maxHeight = compression.maxHeight,
                     keyFrameInterval = compression.keyFrameInterval
                 ),
-                onProgress = compression.onProgress
+                onProgress = compression.onProgress,
+                maxFileSizeKb = compression.maxFileSizeKb
             )
 
             return result.getOrElse { cause -> throw ShadeCompressionException(cause) }
@@ -182,7 +183,8 @@ internal object VideoProcessor {
                     maxHeight = compression.maxHeight,
                     keyFrameInterval = compression.keyFrameInterval
                 ),
-                onProgress = compression.onProgress
+                onProgress = compression.onProgress,
+                maxFileSizeKb = compression.maxFileSizeKb
             )
 
             val failures = results.mapIndexedNotNull { index, result ->

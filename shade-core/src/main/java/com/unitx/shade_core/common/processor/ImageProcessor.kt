@@ -137,7 +137,9 @@ internal object ImageProcessor {
                 maxWidth = compression.maxWidth,
                 maxHeight = compression.maxHeight,
                 outputFormat = compression.format,
-                onProgress = compression.onProgress
+                onProgress = compression.onProgress,
+                maxFileSizeKb = compression.maxFileSizeKb,
+                minQuality = compression.minQuality
             )
 
             return result.getOrElse { cause -> throw ShadeCompressionException(cause) }
@@ -173,6 +175,8 @@ internal object ImageProcessor {
                 maxHeight = compression.maxHeight,
                 onProgress = compression.onProgress,
                 outputFormat = compression.format,
+                maxFileSizeKb = compression.maxFileSizeKb,
+                minQuality = compression.minQuality
             )
 
             val failures = results.mapIndexedNotNull { index, result ->

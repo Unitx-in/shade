@@ -47,7 +47,7 @@ dependencyResolutionManagement {
 
 ```gradle
 dependencies {
-	        implementation("com.github.Unitx-in:shade:0.0.5-alpha-01")
+	        implementation("com.github.Unitx-in:shade:latest_release")
 	}
 ```
 
