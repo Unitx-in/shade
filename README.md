@@ -388,10 +388,15 @@ camera {
 camera {
     compress {
         enabled   = true
-        quality   = 80          // JPEG quality, 0–100
+        quality   = 80          // JPEG quality, 0–100 (starting point for size targeting)
         maxWidth  = 1024        // preserves aspect ratio
         maxHeight = 1024
         format    = CompressFormat.JPEG
+
+        // Optional: target a max file size
+        maxFileSizeKb = 300.0   // binary-searches quality down to minQuality, then scales resolution
+        minQuality    = 20      // floor before resolution scaling kicks in
+
         onProgress = { config ->
             config as ProgressConfig.Compressing
             Log.d("Shade", "File ${config.fileNumber}: ${config.percent}%")
@@ -409,10 +414,14 @@ camera {
 camera {
     compress {
         enabled          = true
-        videoBitrate     = 2_000_000   // 2 Mbps
+        videoBitrate     = 2_000_000   // 2 Mbps — overridden if maxFileSizeKb is set
         frameRate        = 30
         maxWidth         = 720
         keyFrameInterval = 2
+
+        // Optional: target a max file size
+        maxFileSizeKb = 10_000.0   // derives bitrate from duration; single-pass, ±10–15% accuracy
+
         onProgress = { config ->
             config as ProgressConfig.Compressing
             Log.d("Shade", "File ${config.fileNumber}: ${config.percent}%")
