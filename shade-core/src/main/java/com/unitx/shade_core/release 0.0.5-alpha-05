@@ -1,1 +1,0 @@
-Developers can now set a maximum recording duration for video camera captures via `durationLimit` in the camera config block.

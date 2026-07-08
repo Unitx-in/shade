@@ -572,8 +572,9 @@ Shade requests permissions automatically. You do not need to declare or request 
 ## Requirements
 
 - **Min SDK:** 24
-- **Compile SDK:** 35
+- **Compile SDK:** 36
 - **Kotlin:** 1.9+
+- **Min AGP:** 8.6.1 or higher (required by transitive AndroidX dependencies)
 
 ## Contributing
 
