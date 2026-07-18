@@ -1,6 +1,7 @@
 package com.unitx.shade_core.common.config.extend
 
 import com.unitx.shade_core.common.compressor.CompressFormat
+import com.unitx.shade_core.interop.JavaUnitCallback
 
 /**
  * Configuration for compressing images or videos after capture or picking.
@@ -54,6 +55,17 @@ class CompressionConfig {
      * per-file percent and file number.
      */
     var onProgress: ((ProgressConfig) -> Unit)? = null
+
+    /**
+     * Java-friendly setter for [onProgress]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Progress callback. Cast to [ProgressConfig.Compressing] for
+     * per-file percent and file number.
+     */
+    fun onProgress(block: JavaUnitCallback<ProgressConfig>) {
+        onProgress = { block.invoke(it) }
+    }
 
     /**
      * Target max output size in **KB**. `null` = disabled (default).

@@ -6,6 +6,7 @@ import com.unitx.shade_core.core.ShadeCore
 import com.unitx.shade_core.common.config.ShadeConfig
 import com.unitx.shade_core.registrar.ActivityRegistrar
 import com.unitx.shade_core.registrar.FragmentRegistrar
+import com.unitx.shade_core.interop.JavaUnitCallback
 
 /**
  * Entry point for Activity and Fragment based screens.
@@ -67,6 +68,16 @@ object Shade {
     }
 
     /**
+     * Java-friendly overload of [with] for [fragment]. Avoids requiring
+     * `return null;` from Java lambdas.
+     *
+     * Creates a [ShadeCore] bound to [fragment].
+     * Safe to use with `by lazy` at the fragment class level.
+     */
+    fun with(fragment: Fragment, block: JavaUnitCallback<ShadeConfig>): ShadeCore =
+        with(fragment) { block.invoke(this) }
+
+    /**
      * Creates a [ShadeCore] bound to [activity].
      *
      * Must be initialised as a class-level property before `onCreate` returns.
@@ -80,4 +91,16 @@ object Shade {
         val registrar = ActivityRegistrar(activity)
         return ShadeCore(registrar, config)
     }
+
+    /**
+     * Java-friendly overload of [with] for [activity]. Avoids requiring
+     * `return null;` from Java lambdas.
+     *
+     * Creates a [ShadeCore] bound to [activity].
+     *
+     * Must be initialised as a class-level property before `onCreate` returns.
+     * `by lazy` is not safe here.
+     */
+    fun with(activity: ComponentActivity, block: JavaUnitCallback<ShadeConfig>): ShadeCore =
+        with(activity) { block.invoke(this) }
 }

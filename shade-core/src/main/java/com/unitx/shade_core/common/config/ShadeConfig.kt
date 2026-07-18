@@ -3,6 +3,7 @@ package com.unitx.shade_core.common.config
 import com.unitx.shade_core.common.config.base.DocumentConfig
 import com.unitx.shade_core.common.config.scope.ImageScope
 import com.unitx.shade_core.common.config.scope.VideoScope
+import com.unitx.shade_core.interop.JavaUnitCallback
 
 /**
  * Root DSL configuration for Shade. Passed to `rememberShade { }` or `Shade.with(this) { }`.
@@ -48,14 +49,44 @@ class ShadeConfig {
         image = ImageScope().apply(block)
     }
 
+    /**
+     * Java-friendly overload of [image]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Configures image camera capture and/or gallery picking.
+     */
+    fun image(block: JavaUnitCallback<ImageScope>) {
+        image = ImageScope().apply { block.invoke(this) }
+    }
+
     /** Configures video camera capture and/or gallery picking. */
     fun video(block: VideoScope.() -> Unit) {
         video = VideoScope().apply(block)
     }
 
+    /**
+     * Java-friendly overload of [video]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Configures video camera capture and/or gallery picking.
+     */
+    fun video(block: JavaUnitCallback<VideoScope>) {
+        video = VideoScope().apply { block.invoke(this) }
+    }
+
     /** Configures document picking. MIME types are specified at launch via [ShadeAction.Document]. */
     fun document(block: DocumentConfig.() -> Unit) {
         document = DocumentConfig().apply(block)
+    }
+
+    /**
+     * Java-friendly overload of [document]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Configures document picking. MIME types are specified at launch via [ShadeAction.Document].
+     */
+    fun document(block: JavaUnitCallback<DocumentConfig>) {
+        document = DocumentConfig().apply { block.invoke(this) }
     }
 
     internal fun getFilesProviderAuthority(): String {

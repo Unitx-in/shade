@@ -1,10 +1,10 @@
 package com.unitx.shade_core.common.config.base
 
 import com.unitx.shade_core.common.config.extend.CompressionConfig
-import com.unitx.shade_core.common.config.extend.ProgressConfig
 import com.unitx.shade_core.common.config.extend.SaveToExternalStorageConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
+import com.unitx.shade_core.interop.JavaUnitCallback
 
 /**
  * DSL configuration for camera capture (image or video).
@@ -52,6 +52,20 @@ open class CameraConfig {
     }
 
     /**
+     * Java-friendly overload of [compress]. Avoids requiring `Unit.INSTANCE`
+     * as a return value from Java lambdas.
+     *
+     * Configures image/video compression for camera captures.
+     *
+     * When enabled, the captured file is compressed before being
+     * delivered to [onResult]. If compression fails, [onFailure]
+     * is invoked with [ShadeError.CompressionFailed].
+     */
+    fun compress(block: JavaUnitCallback<CompressionConfig>) {
+        compress = CompressionConfig().apply { block.invoke(this) }
+    }
+
+    /**
      * Called when capture completes successfully.
      *
      * [ShadeResult.Captured.file] is always non-null for camera results.
@@ -59,6 +73,19 @@ open class CameraConfig {
      */
     fun onResult(block: (ShadeResult.Captured) -> Unit) {
         onResult = block
+    }
+
+    /**
+     * Java-friendly overload of [onResult]. Avoids requiring `Unit.INSTANCE`
+     * as a return value from Java lambdas.
+     *
+     * Called when capture completes successfully.
+     *
+     * [ShadeResult.Captured.file] is always non-null for camera results.
+     * [ShadeResult.Captured.uri] is a content URI valid for the lifetime of the app.
+     */
+    fun onResult(block: JavaUnitCallback<ShadeResult.Captured>) {
+        onResult = { block.invoke(it) }
     }
 
     /**
@@ -75,6 +102,22 @@ open class CameraConfig {
     }
 
     /**
+     * Java-friendly overload of [onFailure]. Avoids requiring `Unit.INSTANCE`
+     * as a return value from Java lambdas.
+     *
+     * Called when capture fails or is cancelled.
+     *
+     * Possible errors:
+     * - [ShadeError.PermissionDenied] — camera permission denied but can be re-requested
+     * - [ShadeError.PermissionPermanentlyDenied] — user selected "Don't ask again"
+     * - [ShadeError.CompressionFailed] — compression was enabled but failed
+     * - [ShadeError.FileCreationFailed] — temp file could not be created
+     */
+    fun onFailure(block: JavaUnitCallback<ShadeError>) {
+        onFailure = { block.invoke(it) }
+    }
+
+    /**
      * Configures external storage saving for camera captures.
      *
      * When enabled, the final file is written to the specified path and
@@ -85,5 +128,21 @@ open class CameraConfig {
      */
     fun saveToExternalStorage(block: SaveToExternalStorageConfig.() -> Unit) {
         saveToExternalStorage = SaveToExternalStorageConfig().apply(block)
+    }
+
+    /**
+     * Java-friendly overload of [saveToExternalStorage]. Avoids requiring
+     * `Unit.INSTANCE` as a return value from Java lambdas.
+     *
+     * Configures external storage saving for camera captures.
+     *
+     * When enabled, the final file is written to the specified path and
+     * the cache copy is deleted. If compression is also enabled, the
+     * compressed output is saved to external storage.
+     *
+     * @see SaveToExternalStorageConfig
+     */
+    fun saveToExternalStorage(block: JavaUnitCallback<SaveToExternalStorageConfig>) {
+        saveToExternalStorage = SaveToExternalStorageConfig().apply { block.invoke(this) }
     }
 }

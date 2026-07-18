@@ -2,6 +2,7 @@ package com.unitx.shade_core.common.config.scope
 
 import com.unitx.shade_core.common.config.base.CameraConfig
 import com.unitx.shade_core.common.config.base.GalleryConfig
+import com.unitx.shade_core.interop.JavaUnitCallback
 
 /**
  * DSL scope for image configuration. Use inside `rememberShade { }` or `Shade.with(this) { }`.
@@ -33,8 +34,28 @@ class ImageScope {
         camera = CameraConfig().apply(block)
     }
 
+    /**
+     * Java-friendly overload of [camera]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Configures image capture via the device camera.
+     */
+    fun camera(block: JavaUnitCallback<CameraConfig>) {
+        camera = CameraConfig().apply { block.invoke(this) }
+    }
+
     /** Configures image selection from the system photo picker. */
     fun gallery(block: GalleryConfig.() -> Unit) {
         gallery = GalleryConfig().apply(block)
+    }
+
+    /**
+     * Java-friendly overload of [gallery]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Configures image selection from the system photo picker.
+     */
+    fun gallery(block: JavaUnitCallback<GalleryConfig>) {
+        gallery = GalleryConfig().apply { block.invoke(this) }
     }
 }

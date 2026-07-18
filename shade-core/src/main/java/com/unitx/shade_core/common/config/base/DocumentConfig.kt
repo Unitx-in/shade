@@ -4,6 +4,7 @@ import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.extend.MultiSelectConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
+import com.unitx.shade_core.interop.JavaUnitCallback
 
 /**
  * DSL configuration for document picking.
@@ -76,6 +77,20 @@ class DocumentConfig {
     }
 
     /**
+     * Java-friendly overload of [onResult]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Called when one or more documents are picked successfully.
+     *
+     * Cast the result based on your configuration:
+     * - [ShadeResult.Single] — when multi-select is not enabled
+     * - [ShadeResult.Multiple] — when multi-select is enabled
+     */
+    fun onResult(block: JavaUnitCallback<ShadeResult>) {
+        onResult = { block.invoke(it) }
+    }
+
+    /**
      * Enables multi-document selection.
      *
      * When enabled, the system picker allows selecting multiple documents
@@ -86,6 +101,22 @@ class DocumentConfig {
      */
     fun multiSelect(block: MultiSelectConfig.() -> Unit) {
         multiSelect = MultiSelectConfig().apply(block)
+    }
+
+    /**
+     * Java-friendly overload of [multiSelect]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Enables multi-document selection.
+     *
+     * When enabled, the system picker allows selecting multiple documents
+     * and the result is delivered as [ShadeResult.Multiple].
+     *
+     * Note: unlike image/video multi-select, `maxItems` cannot be enforced
+     * by the system document picker — the user may select any number of files.
+     */
+    fun multiSelect(block: JavaUnitCallback<MultiSelectConfig>) {
+        multiSelect = MultiSelectConfig().apply { block.invoke(this) }
     }
 
     /**
@@ -100,6 +131,20 @@ class DocumentConfig {
     }
 
     /**
+     * Java-friendly overload of [onFailure]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Called when picking fails or is cancelled.
+     *
+     * Possible errors:
+     * - [ShadeError.PickCancelled] — user dismissed the picker
+     * - [ShadeError.FileSaveFailed] — copyToCache was enabled but the file could not be saved
+     */
+    fun onFailure(block: JavaUnitCallback<ShadeError>) {
+        onFailure = { block.invoke(it) }
+    }
+
+    /**
      * Copies the picked document(s) to the app's cache directory,
      * providing a stable [java.io.File] reference in the result.
      *
@@ -108,5 +153,19 @@ class DocumentConfig {
      */
     fun copyToCache(block: CacheConfig.() -> Unit) {
         copyToCache = CacheConfig().apply(block)
+    }
+
+    /**
+     * Java-friendly overload of [copyToCache]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Copies the picked document(s) to the app's cache directory,
+     * providing a stable [java.io.File] reference in the result.
+     *
+     * Without this, only the URI is available and it may not be
+     * accessible outside the picker's granted permission window.
+     */
+    fun copyToCache(block: JavaUnitCallback<CacheConfig>) {
+        copyToCache = CacheConfig().apply { block.invoke(this) }
     }
 }

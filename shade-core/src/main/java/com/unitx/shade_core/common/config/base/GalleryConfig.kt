@@ -5,6 +5,7 @@ import com.unitx.shade_core.common.config.extend.CacheConfig
 import com.unitx.shade_core.common.config.extend.MultiSelectConfig
 import com.unitx.shade_core.common.result.ShadeError
 import com.unitx.shade_core.common.result.ShadeResult
+import com.unitx.shade_core.interop.JavaUnitCallback
 
 /**
  * DSL configuration for gallery picking (images or videos).
@@ -89,6 +90,20 @@ class GalleryConfig {
     }
 
     /**
+     * Java-friendly overload of [compress]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Configures image/video compression applied after picking.
+     *
+     * When enabled, each picked file is compressed before being delivered
+     * to [onResult]. If compression fails, [onFailure] is invoked with
+     * [ShadeError.CompressionFailed]. Takes precedence over [copyToCache].
+     */
+    fun compress(block: JavaUnitCallback<CompressionConfig>) {
+        compress = CompressionConfig().apply { block.invoke(this) }
+    }
+
+    /**
      * Enables multi-item selection from the gallery.
      *
      * Result is delivered as [ShadeResult.Multiple].
@@ -97,6 +112,20 @@ class GalleryConfig {
      */
     fun multiSelect(block: MultiSelectConfig.() -> Unit) {
         multiSelect = MultiSelectConfig().apply(block)
+    }
+
+    /**
+     * Java-friendly overload of [multiSelect]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Enables multi-item selection from the gallery.
+     *
+     * Result is delivered as [ShadeResult.Multiple].
+     * If not called, the gallery defaults to single-select
+     * and result is delivered as [ShadeResult.Single].
+     */
+    fun multiSelect(block: JavaUnitCallback<MultiSelectConfig>) {
+        multiSelect = MultiSelectConfig().apply { block.invoke(this) }
     }
 
     /**
@@ -111,6 +140,20 @@ class GalleryConfig {
     }
 
     /**
+     * Java-friendly overload of [copyToCache]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Copies the picked file(s) to the app's cache directory,
+     * providing stable [java.io.File] references in the result.
+     *
+     * Ignored when [compress] is enabled, since compression already
+     * produces a cached file as its output.
+     */
+    fun copyToCache(block: JavaUnitCallback<CacheConfig>) {
+        copyToCache = CacheConfig().apply { block.invoke(this) }
+    }
+
+    /**
      * Called when one or more items are picked successfully.
      *
      * Cast the result based on your configuration:
@@ -119,6 +162,20 @@ class GalleryConfig {
      */
     fun onResult(block: (ShadeResult) -> Unit) {
         onResult = block
+    }
+
+    /**
+     * Java-friendly overload of [onResult]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Called when one or more items are picked successfully.
+     *
+     * Cast the result based on your configuration:
+     * - [ShadeResult.Single] — when multi-select is not enabled
+     * - [ShadeResult.Multiple] — when multi-select is enabled
+     */
+    fun onResult(block: JavaUnitCallback<ShadeResult>) {
+        onResult = { block.invoke(it) }
     }
 
     /**
@@ -131,5 +188,20 @@ class GalleryConfig {
      */
     fun onFailure(block: (ShadeError) -> Unit) {
         onFailure = block
+    }
+
+    /**
+     * Java-friendly overload of [onFailure]. Avoids requiring `return null;`
+     * from Java lambdas.
+     *
+     * Called when picking fails or is cancelled.
+     *
+     * Possible errors:
+     * - [ShadeError.PickCancelled] — user dismissed the picker
+     * - [ShadeError.CompressionFailed] — compression was enabled but failed
+     * - [ShadeError.FileSaveFailed] — copyToCache was enabled but the file could not be saved
+     */
+    fun onFailure(block: JavaUnitCallback<ShadeError>) {
+        onFailure = { block.invoke(it) }
     }
 }
