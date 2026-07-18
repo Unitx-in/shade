@@ -61,5 +61,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation(project(":shade-core"))
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
 //    implementation("com.github.Unitx-in:shade:0.0.5-alpha")
 }

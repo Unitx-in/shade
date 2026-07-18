@@ -49,8 +49,9 @@ enum class DocumentMimeType(val mimeTypeValue: String) {
     /** Rich Text Format (.rtf) */
     RTF("application/rtf");
 
-    internal companion object {
+    companion object {
         val ALL_VALUE_TYPED_ARRAY: Array<String> = entries.map { it.mimeTypeValue }.toTypedArray()
+        @JvmField
         val ALL_ENTRY_LIST: List<DocumentMimeType> = entries as List<DocumentMimeType>
     }
 }
