@@ -58,6 +58,7 @@ object Shade {
      * Creates a [ShadeCore] bound to [fragment].
      * Safe to use with `by lazy` at the fragment class level.
      */
+    @JvmStatic
     fun with(fragment: Fragment, block: ShadeConfig.() -> Unit): ShadeCore {
         val config = ShadeConfig().apply {
             setFilesProviderAuthority("${fragment.requireContext().packageName}.provider")
@@ -74,6 +75,7 @@ object Shade {
      * Creates a [ShadeCore] bound to [fragment].
      * Safe to use with `by lazy` at the fragment class level.
      */
+    @JvmStatic
     fun with(fragment: Fragment, block: JavaUnitCallback<ShadeConfig>): ShadeCore =
         with(fragment) { block.invoke(this) }
 
@@ -83,6 +85,7 @@ object Shade {
      * Must be initialised as a class-level property before `onCreate` returns.
      * `by lazy` is not safe here.
      */
+    @JvmStatic
     fun with(activity: ComponentActivity, block: ShadeConfig.() -> Unit): ShadeCore {
         val config = ShadeConfig().apply {
             setFilesProviderAuthority("${activity.packageName}.provider")
@@ -101,6 +104,7 @@ object Shade {
      * Must be initialised as a class-level property before `onCreate` returns.
      * `by lazy` is not safe here.
      */
+    @JvmStatic
     fun with(activity: ComponentActivity, block: JavaUnitCallback<ShadeConfig>): ShadeCore =
         with(activity) { block.invoke(this) }
 }
