@@ -47,7 +47,7 @@ internal object ImageProcessor {
         } else null
 
         val externalFile = if (saveToExternalStorage?.enabled == true && processedFile != null && saveToExternalStorage.path != null) {
-            FileHelper.saveToExternalStorage(processedFile, saveToExternalStorage.path!!)
+            FileHelper.saveToExternalStorage(file = processedFile, targetDir =  saveToExternalStorage.path!!, fileName = saveToExternalStorage.fileName)
         } else null
 
         val finalFile = externalFile ?: processedFile

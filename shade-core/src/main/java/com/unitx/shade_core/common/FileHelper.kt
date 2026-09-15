@@ -19,10 +19,10 @@ internal object FileHelper {
         }
     }
 
-    internal fun saveToExternalStorage(file: File, targetDir: File): File? {
+    internal fun saveToExternalStorage(file: File, targetDir: File, fileName: String? = null): File? {
         return try {
             if (!targetDir.exists()) targetDir.mkdirs()
-            val destination = File(targetDir, file.name)
+            val destination = File(targetDir, fileName ?: file.name)
             file.copyTo(destination, overwrite = true)
             file.delete()
             destination

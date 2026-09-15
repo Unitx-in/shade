@@ -361,22 +361,25 @@ gallery {
 
 Saves the captured file directly to a custom external storage path. Works alongside compression — if compression is enabled, the compressed file is saved to external storage and the cache copy is deleted.
 
+By default, the file keeps its original generated name (e.g. `IMG_xxxxx.jpg`). To save it under a specific name instead, set `fileName`.
+
 ```kotlin
 camera {
     saveToExternalStorage {
         enabled = true
         path = File(
-            Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES
-            ), "Shade"
+            context.getExternalFilesDir(null), "Shade"
         )
+        fileName = "custom_name.jpg" // optional — omit to keep the original name
     }
     onResult { result ->
         Log.d("Shade", result.file?.absolutePath ?: "no file")
-        // file is in external storage, not cache
+        // file is in external storage, not cache, and named "custom_name.jpg"
     }
 }
 ```
+
+> **Note:** Prefer an app-specific directory (e.g. `context.getExternalFilesDir(null)`) over a public shared directory like `Environment.getExternalStoragePublicDirectory()`. Public directories require `MANAGE_EXTERNAL_STORAGE` on Android 11+ and raw file access will fail with `EACCES` otherwise. App-specific directories work on all Android versions without extra permissions.
 
 > Only available for camera captures. For public directories like `DCIM/` or `Pictures/`, declare `WRITE_EXTERNAL_STORAGE` in your manifest for API 28 and below. On API 29+, no permission is needed for app-specific paths via `getExternalFilesDir()`.
 

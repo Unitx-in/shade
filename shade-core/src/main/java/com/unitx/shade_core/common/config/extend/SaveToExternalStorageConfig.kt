@@ -12,13 +12,14 @@ import java.io.File
  * saveToExternalStorage {
  *     enabled = true
  *     path = File(
- *         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+ *         context.getExternalFilesDir(null),
  *         "MyApp"
  *     )
+ *     fileName = "custom_name.jpg"
  * }
  * ```
  *
- * @see CameraConfig
+ * @see com.unitx.shade_core.common.config.base.CameraConfig
  */
 class SaveToExternalStorageConfig {
     /** Whether external storage saving is enabled. */
@@ -26,4 +27,10 @@ class SaveToExternalStorageConfig {
 
     /** Target directory where the file will be saved. Created automatically if it does not exist. */
     var path: File? = null
+
+    /**
+     * Optional custom file name (including extension) to use when saving.
+     * If null, the original captured file's name is kept.
+     */
+    var fileName: String? = null
 }
