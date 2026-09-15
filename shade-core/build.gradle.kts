@@ -49,7 +49,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.Unitx-in"
                 artifactId = "shade"
-                version = "0.0.5-alpha-08"
+                version = "0.0.5-alpha-09"
             }
         }
     }

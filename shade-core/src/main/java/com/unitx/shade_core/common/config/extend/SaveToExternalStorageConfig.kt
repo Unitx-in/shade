@@ -51,6 +51,7 @@ class SaveToExternalStorageConfig {
      * a constant: `fileNameProvider = { "name.jpg" }`.
      */
     var fileNameProvider: (() -> String)? = null
+        @JvmName("setFileNameProviderKt") set
 
     /**
      * Java-friendly setter for [fileNameProvider].
