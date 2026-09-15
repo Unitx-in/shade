@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,7 +48,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        ShadeTestScreen()
+                        LazyFileNameTestScreen()
                     }
                 }
             }
@@ -207,6 +209,85 @@ fun ShadeTestScreen() {
         ) { Text("Document Picker") }
 
         Text(text = lastResultText)
+
+        previewUri?.let { uri ->
+            AsyncImage(
+                model = uri,
+                contentDescription = "Preview",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            )
+        }
+    }
+}
+
+
+@Composable
+fun LazyFileNameTestScreen() {
+    val context = LocalContext.current
+
+    var jobId by remember { mutableStateOf("UNSET") }
+
+    var previewUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var lastSavedPath by remember { mutableStateOf("No capture yet") }
+    var captureCount by remember { mutableStateOf(0) }
+
+    val shade = rememberShade {
+        image {
+            camera {
+                saveToExternalStorage {
+                    enabled = true
+                    path = File(context.getExternalFilesDir(null), "LazyTest")
+                    fileNameProvider = {
+                        "capture_${jobId}_${System.currentTimeMillis()}.jpg"
+                    }
+                }
+                onResult { captured ->
+                    captureCount++
+                    lastSavedPath = captured.file.absolutePath
+                    previewUri = captured.uri
+                    Log.d(
+                        "LazyFileNameTest",
+                        "Capture #$captureCount | jobId at capture time = '$jobId' | saved as: ${captured.file.name}"
+                    )
+                }
+                onFailure { error ->
+                    Log.e("LazyFileNameTest", error.toString())
+                    Toast.makeText(context, "$error", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(text = "Lazy fileNameProvider Test", style = MaterialTheme.typography.titleLarge)
+
+        Text(
+            text = "This screen proves fileNameProvider is evaluated at SAVE time, " +
+                    "not when the Shade config was built. Change Job ID between captures " +
+                    "and confirm the saved file name updates each time."
+        )
+
+        OutlinedTextField(
+            value = jobId,
+            onValueChange = { jobId = it },
+            label = { Text("Job ID (change this between captures)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Button(
+            onClick = { shade.launch(ShadeAction.Image.Camera) },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Capture Image (uses current Job ID = \"$jobId\")") }
+
+        Text(text = "Captures so far: $captureCount")
+        Text(text = "Last saved path:\n$lastSavedPath")
 
         previewUri?.let { uri ->
             AsyncImage(
