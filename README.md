@@ -1,6 +1,7 @@
 # Shade
 
-A lightweight Android media library for capturing and picking images, videos, and documents — with built-in compression, cache copying, and progress reporting.
+A lightweight Android media library for capturing and picking images, videos, and documents — with
+built-in compression, cache copying, and progress reporting.
 
 Supports both **Compose** and **XML (Activity/Fragment)** setups.
 
@@ -57,17 +58,15 @@ Add to your `AndroidManifest.xml` inside application block:
 
 ```xml
 
-<provider 
-    android:authorities="${applicationId}.provider"
-    android:exported="false" android:grantUriPermissions="true"
-    android:name="androidx.core.content.FileProvider">
-    <meta-data 
-        android:name="android.support.FILE_PROVIDER_PATHS"
+<provider android:authorities="${applicationId}.provider" android:exported="false"
+    android:grantUriPermissions="true" android:name="androidx.core.content.FileProvider">
+    <meta-data android:name="android.support.FILE_PROVIDER_PATHS"
         android:resource="@xml/shade_file_paths" />
 </provider>
 ```
 
-If your app already has a `FileProvider` with a different authority (e.g. `${applicationId}.fileprovider`), pass it explicitly:
+If your app already has a `FileProvider` with a different authority (e.g.
+`${applicationId}.fileprovider`), pass it explicitly:
 
 ```kotlin
 val shade = rememberShade {
@@ -76,7 +75,8 @@ val shade = rememberShade {
 }
 ```
 
-If you already have a `file_paths.xml`, just add the `<cache-path>` entry to it instead of creating a new file, and point your existing provider's `android:resource` to it.
+If you already have a `file_paths.xml`, just add the `<cache-path>` entry to it instead of creating
+a new file, and point your existing provider's `android:resource` to it.
 
 ---
 
@@ -85,9 +85,7 @@ Create `res/xml/shade_file_paths.xml`:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <cache-path
-        name="shade_cache"
-        path="shade_cache/" />
+    <cache-path name="shade_cache" path="shade_cache/" />
 </paths>
 ```
 
@@ -205,13 +203,15 @@ document {
 }
 ```
 
-> `file` is non-null on `Single` and `Multiple` items only when `copyToCache` or `compress` is enabled.
+> `file` is non-null on `Single` and `Multiple` items only when `copyToCache` or `compress` is
+> enabled.
 
 ---
 
 ## Upload-ready Output (OkHttp)
 
-Convert any `ShadeResult` directly into an OkHttp `RequestBody` or `MultipartBody.Part`, ready for Retrofit or raw OkHttp — no extra wrapping needed.
+Convert any `ShadeResult` directly into an OkHttp `RequestBody` or `MultipartBody.Part`, ready for
+Retrofit or raw OkHttp — no extra wrapping needed.
 
 > Requires OkHttp in your app dependencies:
 > ```gradle
@@ -270,7 +270,7 @@ Pass an `OkHttpMimeType` enum value to override the inferred type:
 
 ```kotlin
 val part = result.toMultipartPart(
-    name     = "photo",
+    name = "photo",
     mimeType = OkHttpMimeType.JPEG
 )
 ```
@@ -284,7 +284,7 @@ interface MediaApi {
     suspend fun uploadAvatar(
         @Part avatar: MultipartBody.Part
     ): Response<Unit>
- 
+
     @Multipart
     @POST("posts/media")
     suspend fun uploadImages(
@@ -293,7 +293,6 @@ interface MediaApi {
 }
 ```
 
-
 ## Errors
 
 Handle failures in `onFailure { }`:
@@ -301,15 +300,15 @@ Handle failures in `onFailure { }`:
 ```kotlin
 onFailure { error ->
     when (error) {
-        ShadeError.PermissionDenied             -> showRationale()
-        ShadeError.PermissionPermanentlyDenied  -> openAppSettings()
-        ShadeError.PickCancelled                -> Unit
-        is ShadeError.CaptureFailed             -> log(error.reason)
-        is ShadeError.CompressionFailed         -> showError("Compression failed: ${error.source}")
-        is ShadeError.FileSaveFailed            -> showError("Could not save: ${error.allFailed.size} file(s)")
-        is ShadeError.DocumentProcessingFailed  -> showError("Document failed: ${error.failedUris.size} file(s)")
-        is ShadeError.Unknown                   -> showError("Something went wrong")
-        else                                    -> showError("Something went wrong")
+        ShadeError.PermissionDenied -> showRationale()
+        ShadeError.PermissionPermanentlyDenied -> openAppSettings()
+        ShadeError.PickCancelled -> Unit
+        is ShadeError.CaptureFailed -> log(error.reason)
+        is ShadeError.CompressionFailed -> showError("Compression failed: ${error.source}")
+        is ShadeError.FileSaveFailed -> showError("Could not save: ${error.allFailed.size} file(s)")
+        is ShadeError.DocumentProcessingFailed -> showError("Document failed: ${error.failedUris.size} file(s)")
+        is ShadeError.Unknown -> showError("Something went wrong")
+        else -> showError("Something went wrong")
     }
 }
 ```
@@ -323,7 +322,7 @@ onFailure { error ->
 ```kotlin
 gallery {
     multiSelect {
-        enabled  = true
+        enabled = true
         maxItems = 5
     }
     onResult { result ->
@@ -335,7 +334,8 @@ gallery {
 }
 ```
 
-> `maxItems` is enforced for image/video gallery. For document picking, the system picker does not support enforcing a maximum.
+> `maxItems` is enforced for image/video gallery. For document picking, the system picker does not
+> support enforcing a maximum.
 
 ### Copy to Cache
 
@@ -344,7 +344,7 @@ Copies picked files to the app's cache directory and provides a stable `File` re
 ```kotlin
 gallery {
     copyToCache {
-        enabled    = true
+        enabled = true
         onProgress = { config ->
             config as ProgressConfig.Copying
             Log.d("Shade", "File ${config.fileNumber}: ${config.percent}%")
@@ -359,18 +359,24 @@ gallery {
 
 ### Save to External Storage
 
-Saves the captured file directly to a custom external storage path. Works alongside compression — if compression is enabled, the compressed file is saved to external storage and the cache copy is deleted.
+Saves the captured file directly to a custom external storage path. Works alongside compression — if
+compression is enabled, the compressed file is saved to external storage and the cache copy is
+deleted.
 
-By default, the file keeps its original generated name (e.g. `IMG_xxxxx.jpg`). To save it under a specific name instead, set `fileNameProvider`. The provider is evaluated lazily, at save time — not when the config block runs — so it can safely reference values that aren't available yet at setup time (e.g. a job ID fetched later in `onCreate`).
+By default, the file keeps its original generated name (e.g. `IMG_xxxxx.jpg`) and saves to whatever
+directory `pathProvider` resolves to. Both `pathProvider` and `fileNameProvider` are evaluated
+lazily, at save time — not when the config block runs — so they can safely reference values that
+aren't available yet at setup time (e.g. a job ID fetched later in `onCreate`).
 
 **Kotlin:**
+
 ```kotlin
 camera {
     saveToExternalStorage {
         enabled = true
-        path = File(
-            context.getExternalFilesDir(null), "Shade"
-        )
+        pathProvider = {
+            File(context.getExternalFilesDir(null), "Shade")
+        }
         fileNameProvider = { "custom_name.jpg" } // optional — omit to keep the original name
     }
     onResult { result ->
@@ -380,11 +386,19 @@ camera {
 }
 ```
 
-This is invoked when the file is actually saved, so it always reflects the current value of `jobId` at that moment, regardless of when the Shade config was originally built.
+Both providers are invoked when the file is actually saved, so they always reflect the current value
+of `jobId` (or any other referenced variable) at that moment, regardless of when the Shade config
+was originally built.
 
-> **Note:** Prefer an app-specific directory (e.g. `context.getExternalFilesDir(null)`) over a public shared directory like `Environment.getExternalStoragePublicDirectory()`. Public directories require `MANAGE_EXTERNAL_STORAGE` on Android 11+ and raw file access will fail with `EACCES` otherwise. App-specific directories work on all Android versions without extra permissions.
+> **Note:** Prefer an app-specific directory (e.g. `context.getExternalFilesDir(null)`) over a
+> public shared directory like `Environment.getExternalStoragePublicDirectory()`. Public directories
+> require `MANAGE_EXTERNAL_STORAGE` on Android 11+ and raw file access will fail with `EACCES`
+> otherwise. App-specific directories work on all Android versions without extra permissions.
 
-> Only available for camera captures. For public directories like `DCIM/` or `Pictures/`, declare `WRITE_EXTERNAL_STORAGE` in your manifest for API 28 and below. On API 29+, no permission is needed for app-specific paths via `getExternalFilesDir()`.
+> Only available for camera captures. For public directories like `DCIM/` or `Pictures/`, declare
+`WRITE_EXTERNAL_STORAGE` in your manifest for API 28 and below. On API 29+, no permission is needed
+> for app-specific paths via `getExternalFilesDir()`.
+
 ### Compression
 
 #### Image
@@ -392,15 +406,16 @@ This is invoked when the file is actually saved, so it always reflects the curre
 ```kotlin
 camera {
     compress {
-        enabled   = true
-        quality   = 80          // JPEG quality, 0–100 (starting point for size targeting)
-        maxWidth  = 1024        // preserves aspect ratio
+        enabled = true
+        quality = 80          // JPEG quality, 0–100 (starting point for size targeting)
+        maxWidth = 1024        // preserves aspect ratio
         maxHeight = 1024
-        format    = CompressFormat.JPEG
+        format = CompressFormat.JPEG
 
         // Optional: target a max file size
-        maxFileSizeKb = 300.0   // binary-searches quality down to minQuality, then scales resolution
-        minQuality    = 20      // floor before resolution scaling kicks in
+        maxFileSizeKbProvider =
+            { 300.0 }   // binary-searches quality down to minQuality, then scales resolution
+        minQuality = 20      // floor before resolution scaling kicks in
 
         onProgress = { config ->
             config as ProgressConfig.Compressing
@@ -418,14 +433,14 @@ camera {
 ```kotlin
 camera {
     compress {
-        enabled          = true
-        videoBitrate     = 2_000_000   // 2 Mbps — overridden if maxFileSizeKb is set
-        frameRate        = 30
-        maxWidth         = 720
+        enabled = true
+        videoBitrate = 2_000_000   // 2 Mbps — overridden if maxFileSizeKb is set
+        frameRate = 30
+        maxWidth = 720
         keyFrameInterval = 2
 
         // Optional: target a max file size
-        maxFileSizeKb = 10_000.0   // derives bitrate from duration; single-pass, ±10–15% accuracy
+        maxFileSizeKbProvider  = { 10_000.0 }   // derives bitrate from duration; single-pass, ±10–15% accuracy
 
         onProgress = { config ->
             config as ProgressConfig.Compressing
@@ -438,7 +453,8 @@ camera {
 }
 ```
 
-> `compress` and `copyToCache` are mutually exclusive — when compression is enabled it takes precedence.
+> `compress` and `copyToCache` are mutually exclusive — when compression is enabled it takes
+> precedence.
 
 ---
 
@@ -449,7 +465,7 @@ MIME types are specified at launch, not in the config block:
 ```kotlin
 document {
     copyToCache {
-        enabled    = true
+        enabled = true
         onProgress = { config ->
             config as ProgressConfig.Copying
             Log.d("Shade", "${config.percent}%")
@@ -498,9 +514,9 @@ val shade = rememberShade {
     image {
         camera {
             compress {
-                enabled   = true
-                quality   = 80
-                maxWidth  = 1024
+                enabled = true
+                quality = 80
+                maxWidth = 1024
                 maxHeight = 1024
             }
             onResult { result ->
@@ -512,11 +528,11 @@ val shade = rememberShade {
         }
         gallery {
             multiSelect {
-                enabled  = true
+                enabled = true
                 maxItems = 10
             }
             copyToCache {
-                enabled    = true
+                enabled = true
                 onProgress = { config ->
                     config as ProgressConfig.Copying
                     Log.i("Shade", "File ${config.fileNumber}: ${config.percent}%")
@@ -524,7 +540,11 @@ val shade = rememberShade {
             }
             onResult { result ->
                 val multiple = result as ShadeResult.Multiple
-                Toast.makeText(context, "${multiple.items.size} images selected", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "${multiple.items.size} images selected",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
             onFailure { error ->
                 Toast.makeText(context, error.toString(), Toast.LENGTH_SHORT).show()
@@ -552,10 +572,10 @@ val shade = rememberShade {
 }
 
 Row {
-    Button(onClick = { shade.launch(ShadeAction.Image.Camera) })  { Text("Camera") }
+    Button(onClick = { shade.launch(ShadeAction.Image.Camera) }) { Text("Camera") }
     Button(onClick = { shade.launch(ShadeAction.Image.Gallery) }) { Text("Gallery") }
     Button(onClick = { shade.launch(ShadeAction.Video.Gallery) }) { Text("Video") }
-    Button(onClick = { shade.launch(ShadeAction.Document()) })    { Text("Document") }
+    Button(onClick = { shade.launch(ShadeAction.Document()) }) { Text("Document") }
 }
 ```
 
