@@ -105,9 +105,9 @@ internal class CameraHandler(
                         prefix = prefix,
                         extension = extension,
                         compression = compression,
-                        copyToCache = null, // Caching is not available in camera
+                        copyToCache = null,
                         authority = config.getFilesProviderAuthority(),
-                        saveToExternalStorage = config.image?.camera?.saveToExternalStorage
+                        saveToExternalStorage = config.video?.camera?.saveToExternalStorage  // ← fixed
                     )
                 },
                 onFailure = config.video?.camera?.onFailure,
