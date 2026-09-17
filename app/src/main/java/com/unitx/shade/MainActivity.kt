@@ -77,10 +77,12 @@ fun ShadeTestScreen() {
                 }
                 saveToExternalStorage {
                     enabled = true
-                    path = File(
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
-                        "Shade"
-                    )
+                    pathProvider = {
+                        File(
+                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+                            "Shade"
+                        )
+                    }
                 }
                 onResult { captured ->
                     val fileName = captured.file.name
@@ -238,7 +240,9 @@ fun LazyFileNameTestScreen() {
             camera {
                 saveToExternalStorage {
                     enabled = true
-                    path = File(context.getExternalFilesDir(null), "LazyTest")
+                    pathProvider = {
+                        File(context.getExternalFilesDir(null), "LazyTest")
+                    }
                     fileNameProvider = {
                         "capture_${jobId}_${System.currentTimeMillis()}.jpg"
                     }

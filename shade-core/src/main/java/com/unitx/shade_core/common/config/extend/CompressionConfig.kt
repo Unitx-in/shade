@@ -1,6 +1,7 @@
 package com.unitx.shade_core.common.config.extend
 
 import com.unitx.shade_core.common.compressor.CompressFormat
+import com.unitx.shade_core.interop.JavaDoubleSupplier
 import com.unitx.shade_core.interop.JavaUnitCallback
 
 /**
@@ -10,6 +11,10 @@ import com.unitx.shade_core.interop.JavaUnitCallback
  * Video-specific fields: [videoBitrate], [frameRate], [keyFrameInterval].
  * Unused fields for the media type are safely ignored.
  *
+ * [maxFileSizeKbProvider] is evaluated lazily at compression time, so it
+ * can reference a target size that isn't known at setup time (e.g. a
+ * per-upload limit fetched later).
+ *
  * ```kotlin
  * compress {
  *     enabled = true
@@ -17,6 +22,7 @@ import com.unitx.shade_core.interop.JavaUnitCallback
  *     maxWidth = 1024
  *     maxHeight = 1024
  *     format = CompressFormat.JPEG
+ *     maxFileSizeKbProvider = { uploadLimitKb }
  *     onProgress = { config ->
  *         config as ProgressConfig.Compressing
  *         Log.d("Tag", "File ${config.fileNumber}: ${config.percent}%")
@@ -25,6 +31,8 @@ import com.unitx.shade_core.interop.JavaUnitCallback
  * ```
  */
 class CompressionConfig {
+
+    internal val maxFileSizeKb: Double? get() = maxFileSizeKbProvider?.invoke()
 
     /** Whether compression is active. Default: `true`. */
     var enabled: Boolean = true
@@ -51,6 +59,25 @@ class CompressionConfig {
     var keyFrameInterval: Int = 2
 
     /**
+     * Target max output size in **KB**. Evaluated lazily at compression
+     * time. `null` (default) disables size targeting.
+     *
+     * **Images:** binary-searches quality from [quality] down to [minQuality],
+     * then scales resolution by 0.75x steps if still too large.
+     *
+     * **Videos:** derives bitrate as `(maxFileSizeKb × 8 × 1024) / duration`,
+     * overriding [videoBitrate]. Single-pass; result may vary ±10–15%.
+     */
+    var maxFileSizeKbProvider: (() -> Double)? = null
+        @JvmName("setMaxFileSizeKbProviderKt") set
+
+    /**
+     * Lower quality bound for image size targeting. Default: `1`.
+     * Ignored if [maxFileSizeKbProvider] is `null`. Has no effect on video.
+     */
+    var minQuality: Int = 1
+
+    /**
      * Progress callback. Cast to [ProgressConfig.Compressing] for
      * per-file percent and file number.
      */
@@ -59,28 +86,16 @@ class CompressionConfig {
     /**
      * Java-friendly setter for [onProgress]. Avoids requiring `return null;`
      * from Java lambdas.
-     *
-     * Progress callback. Cast to [ProgressConfig.Compressing] for
-     * per-file percent and file number.
      */
     fun onProgress(block: JavaUnitCallback<ProgressConfig>) {
         onProgress = { block.invoke(it) }
     }
 
     /**
-     * Target max output size in **KB**. `null` = disabled (default).
-     *
-     * **Images:** binary-searches quality from [quality] down to [minQuality],
-     * then scales resolution by 0.75x steps if still too large.
-     *
-     * **Videos:** derives bitrate as `(maxFileSizeKb × 8 × 1024) / duration`,
-     * overriding [videoBitrate]. Single-pass; result may vary ±10–15%.
+     * Java-friendly setter for [maxFileSizeKbProvider].
+     * Avoids requiring Java callers to implement a Kotlin `Function0<Double>`.
      */
-    var maxFileSizeKb: Double? = null
-
-    /**
-     * Lower quality bound for image size targeting. Default: `1`.
-     * Ignored if [maxFileSizeKb] is `null`. Has no effect on video.
-     */
-    var minQuality: Int = 1
+    fun setMaxFileSizeKbProvider(supplier: JavaDoubleSupplier?) {
+        maxFileSizeKbProvider = supplier?.let { { it.get() } }
+    }
 }
